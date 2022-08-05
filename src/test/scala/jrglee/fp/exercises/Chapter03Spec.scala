@@ -308,5 +308,68 @@ class Chapter03Spec
     }
   }
 
-  "3.21" - {}
+  "3.21" - {
+    "should filter with flatMap" in {
+      val table = Table(
+        ("input", "expected"),
+        (Nil, Nil),
+        (List(1), Nil),
+        (List(1, 2, 3), List(2))
+      )
+
+      forEvery(table) { (input, expected) =>
+        List.filter2(input)(_ % 2 == 0) shouldBe expected
+      }
+    }
+  }
+
+  "3.22" - {
+    "should sum lists of ints together" in {
+      val table = Table(
+        ("a", "b", "expected"),
+        (Nil, Nil, Nil),
+        (List(1), Nil, Nil),
+        (Nil, List(1), Nil),
+        (List(1, 2, 3), List(4, 5, 6), List(5, 7, 9))
+      )
+
+      forEvery(table) { (a, b, expected) =>
+        List.zipInts(a, b) shouldBe expected
+      }
+    }
+  }
+
+  "3.23" - {
+    "should generalize zipping" in {
+      val table = Table(
+        ("a", "b", "expected"),
+        (Nil, Nil, Nil),
+        (List(1), Nil, Nil),
+        (Nil, List(1), Nil),
+        (List(1, 2, 3), List(4, 5, 6), List(5, 7, 9))
+      )
+
+      forEvery(table) { (a, b, expected) =>
+        List.zipWith(a, b)(_ + _) shouldBe expected
+      }
+    }
+  }
+
+  "3.24" - {
+    "should find subsequences" in {
+      val table = Table("subs", Nil, List(1, 2), List(2, 3), List(4))
+
+      forEvery(table) { subs =>
+        List.hasSubsequence(List(1, 2, 3, 4), subs) shouldBe true
+      }
+    }
+
+    "should fail on misleading sequences" in {
+      List.hasSubsequence(List(1, 2, 1, 4), List(1, 1)) shouldBe false
+    }
+
+    "should handle repeated beginning" in {
+      List.hasSubsequence(List(1, 1, 1, 2, 3), List(1, 1, 2)) shouldBe true
+    }
+  }
 }

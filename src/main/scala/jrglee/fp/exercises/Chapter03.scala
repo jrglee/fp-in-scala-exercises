@@ -106,6 +106,58 @@ object Chapter03 {
       def flatMap[A, B](lst: List[A])(f: A => List[B]): List[B] =
         foldRight2(lst, Nil: List[B])((v, t) => append(f(v), t))
 
+      def filter2[A](lst: List[A])(f: A => Boolean): List[A] =
+        flatMap(lst)(v => if (f(v)) List(v) else Nil)
+
+      def zipInts(lst1: List[Int], lst2: List[Int]): List[Int] = {
+        @tailrec def loop(
+          a: List[Int],
+          b: List[Int],
+          acc: List[Int]
+        ): List[Int] = (a, b) match {
+          case (Cons(h1, t1), Cons(h2, t2)) => loop(t1, t2, Cons(h1 + h2, acc))
+          case _                            => acc
+        }
+
+        foldLeft(loop(lst1, lst2, Nil), Nil: List[Int])((b, a) => Cons(a, b))
+      }
+
+      def zipWith[A](lst1: List[A], lst2: List[A])(f: (A, A) => A): List[A] = {
+        @tailrec def loop(
+          left: List[A],
+          right: List[A],
+          acc: List[A]
+        ): List[A] =
+          (left, right) match {
+            case (Cons(lHead, lTail), Cons(rHead, rTail)) =>
+              loop(lTail, rTail, Cons(f(lHead, rHead), acc))
+            case _ => acc
+          }
+
+        foldLeft(loop(lst1, lst2, Nil), Nil: List[A])((b, a) => Cons(a, b))
+      }
+
+      def hasSubsequence[A](sup: List[A], sub: List[A]): Boolean = {
+        @tailrec def scanMatch(lst: List[A], remain: List[A]): Boolean =
+          (lst, remain) match {
+            case (_, Nil) => true
+            case (Nil, _) => false
+            case (Cons(h1, t1), Cons(h2, t2)) =>
+              if (h1 == h2) scanMatch(t1, t2) else false
+          }
+
+        @tailrec def loop(lst: List[A]): Boolean = {
+          if (scanMatch(lst, sub)) true
+          else
+            lst match {
+              case Nil           => false
+              case Cons(_, tail) => loop(tail)
+            }
+        }
+
+        loop(sup)
+      }
+
       def apply[A](as: A*): List[A] =
         if (as.isEmpty) Nil
         else Cons(as.head, apply(as.tail: _*))
