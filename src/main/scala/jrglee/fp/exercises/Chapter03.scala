@@ -162,6 +162,55 @@ object Chapter03 {
         if (as.isEmpty) Nil
         else Cons(as.head, apply(as.tail: _*))
     }
-  }
 
+    sealed trait Tree[+A]
+    case class Leaf[A](value: A) extends Tree[A]
+    case class Branch[A](left: Tree[A], right: Tree[A]) extends Tree[A]
+
+    object Tree {
+      def size[A](tree: Tree[A]): Int = tree match {
+        case Leaf(_)             => 1
+        case Branch(left, right) => size(left) + size(right) + 1
+      }
+
+      def maximum[A](tree: Tree[A])(implicit ordering: Ordering[A]): A =
+        tree match {
+          case Leaf(value) => value
+          case Branch(left, right) =>
+            ordering.max(maximum(left), maximum(right))
+        }
+
+      def depth[A](tree: Tree[A]): Int = tree match {
+        case Leaf(_)             => 1
+        case Branch(left, right) => 1 + Math.max(depth(left), depth(right))
+      }
+
+      def map[A, B](tree: Tree[A])(f: A => B): Tree[B] = tree match {
+        case Leaf(value)         => Leaf(f(value))
+        case Branch(left, right) => Branch(map(left)(f), map(right)(f))
+      }
+
+      def fold[A, B](tree: Tree[A])(map: A => B, acc: (B, B) => B): B =
+        tree match {
+          case Leaf(value) => map(value)
+          case Branch(left, right) =>
+            acc(fold(left)(map, acc), fold(right)(map, acc))
+        }
+
+      def size2[A](tree: Tree[A]): Int =
+        fold[A, Int](tree)((_: A) => 1, (l: Int, r: Int) => l + r + 1)
+
+      def maximum2[A](tree: Tree[A])(implicit ordering: Ordering[A]): A =
+        fold(tree)(identity, (l: A, r: A) => ordering.max(l, r))
+
+      def depth2[A](tree: Tree[A]): Int =
+        fold(tree)((_: A) => 1, (l: Int, r: Int) => Math.max(l, r) + 1)
+
+      def map2[A, B](tree: Tree[A])(f: A => B): Tree[B] =
+        fold(tree)(
+          (a: A) => Leaf(f(a)),
+          (l: Tree[B], r: Tree[B]) => Branch(l, r)
+        )
+    }
+  }
 }

@@ -372,4 +372,126 @@ class Chapter03Spec
       List.hasSubsequence(List(1, 1, 1, 2, 3), List(1, 1, 2)) shouldBe true
     }
   }
+
+  "3.25" - {
+    "should count the number of nodes" in {
+      val table = Table(
+        ("input", "expected"),
+        (Leaf(1), 1),
+        (Branch(Leaf(1), Leaf(2)), 3),
+        (Branch(Branch(Leaf(1), Leaf(2)), Leaf(3)), 5)
+      )
+
+      forEvery(table) { (input, expected) =>
+        Tree.size(input) shouldBe expected
+      }
+    }
+  }
+
+  "3.26" - {
+    "should get the maximum node value" in {
+      val table = Table(
+        ("input", "expected"),
+        (Leaf(1), 1),
+        (Branch(Leaf(1), Leaf(2)), 2),
+        (Branch(Branch(Leaf(1), Leaf(2)), Leaf(3)), 3),
+        (Branch(Branch(Leaf(1), Leaf(7)), Branch(Leaf(3), Leaf(5))), 7)
+      )
+
+      forEvery(table) { (input, expected) =>
+        Tree.maximum(input) shouldBe expected
+      }
+    }
+  }
+
+  "3.27" - {
+    "should get the maximum depth from root" in {
+      val table = Table(
+        ("input", "expected"),
+        (Leaf(1), 1),
+        (Branch(Leaf(1), Leaf(2)), 2),
+        (Branch(Branch(Leaf(1), Leaf(2)), Leaf(3)), 3)
+      )
+
+      forEvery(table) { (input, expected) =>
+        Tree.depth(input) shouldBe expected
+      }
+    }
+  }
+
+  "3.28" - {
+    "should map nodes to new values" in {
+      val table = Table(
+        ("input", "expected"),
+        (Leaf(1), Leaf(2)),
+        (Branch(Leaf(1), Leaf(2)), Branch(Leaf(2), Leaf(4))),
+        (
+          Branch(Branch(Leaf(1), Leaf(2)), Leaf(3)),
+          Branch(Branch(Leaf(2), Leaf(4)), Leaf(6))
+        )
+      )
+
+      forEvery(table) { (input, expected) =>
+        Tree.map(input)(_ * 2) shouldBe expected
+      }
+    }
+  }
+
+  "3.29" - {
+    "should count with fold" in {
+      val table = Table(
+        ("input", "expected"),
+        (Leaf(1), 1),
+        (Branch(Leaf(1), Leaf(2)), 3),
+        (Branch(Branch(Leaf(1), Leaf(2)), Leaf(3)), 5)
+      )
+
+      forEvery(table) { (input, expected) =>
+        Tree.size2(input) shouldBe expected
+      }
+    }
+
+    "should get the max value with fold" in {
+      val table = Table(
+        ("input", "expected"),
+        (Leaf(1), 1),
+        (Branch(Leaf(1), Leaf(2)), 2),
+        (Branch(Branch(Leaf(1), Leaf(2)), Leaf(3)), 3),
+        (Branch(Branch(Leaf(1), Leaf(7)), Branch(Leaf(3), Leaf(5))), 7)
+      )
+
+      forEvery(table) { (input, expected) =>
+        Tree.maximum2(input) shouldBe expected
+      }
+    }
+
+    "should get the depth with fold" in {
+      val table = Table(
+        ("input", "expected"),
+        (Leaf(1), 1),
+        (Branch(Leaf(1), Leaf(2)), 2),
+        (Branch(Branch(Leaf(1), Leaf(2)), Leaf(3)), 3)
+      )
+
+      forEvery(table) { (input, expected) =>
+        Tree.depth2(input) shouldBe expected
+      }
+    }
+
+    "should map nodes to new values" in {
+      val table = Table(
+        ("input", "expected"),
+        (Leaf(1), Leaf(2)),
+        (Branch(Leaf(1), Leaf(2)), Branch(Leaf(2), Leaf(4))),
+        (
+          Branch(Branch(Leaf(1), Leaf(2)), Leaf(3)),
+          Branch(Branch(Leaf(2), Leaf(4)), Leaf(6))
+        )
+      )
+
+      forEvery(table) { (input, expected) =>
+        Tree.map2(input)(_ * 2) shouldBe expected
+      }
+    }
+  }
 }
