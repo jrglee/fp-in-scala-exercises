@@ -6,7 +6,7 @@ import org.scalatest.prop.TableDrivenPropertyChecks
 
 class Chapter03Spec extends AnyFreeSpec with Matchers with TableDrivenPropertyChecks {
 
-  import Chapter03.Ref._
+  import Chapter03._
 
   "3.1" - {
     "should be 3" in {
