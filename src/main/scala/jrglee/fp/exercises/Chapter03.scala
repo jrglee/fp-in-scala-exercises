@@ -110,11 +110,7 @@ object Chapter03 {
         flatMap(lst)(v => if (f(v)) List(v) else Nil)
 
       def zipInts(lst1: List[Int], lst2: List[Int]): List[Int] = {
-        @tailrec def loop(
-          a: List[Int],
-          b: List[Int],
-          acc: List[Int]
-        ): List[Int] = (a, b) match {
+        @tailrec def loop(a: List[Int], b: List[Int], acc: List[Int]): List[Int] = (a, b) match {
           case (Cons(h1, t1), Cons(h2, t2)) => loop(t1, t2, Cons(h1 + h2, acc))
           case _                            => acc
         }
@@ -123,11 +119,7 @@ object Chapter03 {
       }
 
       def zipWith[A](lst1: List[A], lst2: List[A])(f: (A, A) => A): List[A] = {
-        @tailrec def loop(
-          left: List[A],
-          right: List[A],
-          acc: List[A]
-        ): List[A] =
+        @tailrec def loop(left: List[A], right: List[A], acc: List[A]): List[A] =
           (left, right) match {
             case (Cons(lHead, lTail), Cons(rHead, rTail)) =>
               loop(lTail, rTail, Cons(f(lHead, rHead), acc))
@@ -207,10 +199,7 @@ object Chapter03 {
         fold(tree)((_: A) => 1, (l: Int, r: Int) => Math.max(l, r) + 1)
 
       def map2[A, B](tree: Tree[A])(f: A => B): Tree[B] =
-        fold(tree)(
-          (a: A) => Leaf(f(a)),
-          (l: Tree[B], r: Tree[B]) => Branch(l, r)
-        )
+        fold(tree)((a: A) => Leaf(f(a)), (l: Tree[B], r: Tree[B]) => Branch(l, r))
     }
   }
 }

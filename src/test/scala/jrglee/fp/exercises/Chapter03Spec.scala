@@ -4,10 +4,7 @@ import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.prop.TableDrivenPropertyChecks
 
-class Chapter03Spec
-    extends AnyFreeSpec
-    with Matchers
-    with TableDrivenPropertyChecks {
+class Chapter03Spec extends AnyFreeSpec with Matchers with TableDrivenPropertyChecks {
 
   import Chapter03.Ref._
 
@@ -27,12 +24,7 @@ class Chapter03Spec
 
   "3.2" - {
     "should get tail of a list" in {
-      val table = Table(
-        ("input", "expected"),
-        (Nil, Nil),
-        (List(1), Nil),
-        (List(1, 2, 3), List(2, 3))
-      )
+      val table = Table(("input", "expected"), (Nil, Nil), (List(1), Nil), (List(1, 2, 3), List(2, 3)))
 
       forEvery(table) { (input, expected) =>
         List.tail(input) shouldBe expected
@@ -106,14 +98,10 @@ class Chapter03Spec
 
   "3.8" - {
     "should concat with foldRight" in {
-      val table = Table(
-        ("left", "right", "expected"),
-        (List(1, 2, 3), Nil: List[Int], List(1, 2, 3))
-      )
+      val table = Table(("left", "right", "expected"), (List(1, 2, 3), Nil: List[Int], List(1, 2, 3)))
 
-      forEvery(table) {
-        (left: List[Int], right: List[Int], expected: List[Int]) =>
-          List.foldRight(left, right)(Cons(_, _)) shouldBe expected
+      forEvery(table) { (left: List[Int], right: List[Int], expected: List[Int]) =>
+        List.foldRight(left, right)(Cons(_, _)) shouldBe expected
       }
     }
   }
@@ -151,12 +139,7 @@ class Chapter03Spec
     }
 
     "should multiply with foldLeft" in {
-      val table = Table(
-        ("input", "product"),
-        (Nil, 1.0),
-        (List(1.0), 1.0),
-        (List(1.0, 2.0, 3.0), 6.0)
-      )
+      val table = Table(("input", "product"), (Nil, 1.0), (List(1.0), 1.0), (List(1.0, 2.0, 3.0), 6.0))
 
       forEvery(table) { (input, product) =>
         List.productWithFoldLeft(input) shouldBe product
@@ -235,12 +218,7 @@ class Chapter03Spec
 
   "3.16" - {
     "should add 1 to all entries in the list" in {
-      val table = Table(
-        ("input", "expected"),
-        (Nil, Nil),
-        (List(1), List(2)),
-        (List(1, 2, 3), List(2, 3, 4))
-      )
+      val table = Table(("input", "expected"), (Nil, Nil), (List(1), List(2)), (List(1, 2, 3), List(2, 3, 4)))
 
       forEvery(table) { (input, expected) =>
         List.addOne(input) shouldBe expected
@@ -250,12 +228,8 @@ class Chapter03Spec
 
   "3.17" - {
     "should map list of doubles to list of strings" in {
-      val table = Table(
-        ("input", "expected"),
-        (Nil, Nil),
-        (List(1.0), List("1.0")),
-        (List(1.0, 5.5), List("1.0", "5.5"))
-      )
+      val table =
+        Table(("input", "expected"), (Nil, Nil), (List(1.0), List("1.0")), (List(1.0, 5.5), List("1.0", "5.5")))
 
       forEvery(table) { (input, expected) =>
         List.stringifyDoubles(input) shouldBe expected
@@ -265,12 +239,7 @@ class Chapter03Spec
 
   "3.18" - {
     "should map all values" in {
-      val table = Table(
-        ("input", "expected"),
-        (Nil, Nil),
-        (List(1), List(2)),
-        (List(1, 2, 3), List(2, 3, 4))
-      )
+      val table = Table(("input", "expected"), (Nil, Nil), (List(1), List(2)), (List(1, 2, 3), List(2, 3, 4)))
 
       forEvery(table) { (input, expected) =>
         List.map(input)(_ + 1) shouldBe expected
@@ -280,12 +249,7 @@ class Chapter03Spec
 
   "3.19" - {
     "should filter matching values" in {
-      val table = Table(
-        ("input", "expected"),
-        (Nil, Nil),
-        (List(1), Nil),
-        (List(1, 2, 3), List(2))
-      )
+      val table = Table(("input", "expected"), (Nil, Nil), (List(1), Nil), (List(1, 2, 3), List(2)))
 
       forEvery(table) { (input, expected) =>
         List.filter(input)(_ % 2 == 0) shouldBe expected
@@ -295,12 +259,7 @@ class Chapter03Spec
 
   "3.20" - {
     "should flatMap" in {
-      val table = Table(
-        ("input", "expected"),
-        (Nil, Nil),
-        (List(1), List(1, 2)),
-        (List(1, 2), List(1, 2, 2, 3))
-      )
+      val table = Table(("input", "expected"), (Nil, Nil), (List(1), List(1, 2)), (List(1, 2), List(1, 2, 2, 3)))
 
       forEvery(table) { (input, expected) =>
         List.flatMap(input)(v => List(v, v + 1)) shouldBe expected
@@ -310,12 +269,7 @@ class Chapter03Spec
 
   "3.21" - {
     "should filter with flatMap" in {
-      val table = Table(
-        ("input", "expected"),
-        (Nil, Nil),
-        (List(1), Nil),
-        (List(1, 2, 3), List(2))
-      )
+      val table = Table(("input", "expected"), (Nil, Nil), (List(1), Nil), (List(1, 2, 3), List(2)))
 
       forEvery(table) { (input, expected) =>
         List.filter2(input)(_ % 2 == 0) shouldBe expected
@@ -425,10 +379,7 @@ class Chapter03Spec
         ("input", "expected"),
         (Leaf(1), Leaf(2)),
         (Branch(Leaf(1), Leaf(2)), Branch(Leaf(2), Leaf(4))),
-        (
-          Branch(Branch(Leaf(1), Leaf(2)), Leaf(3)),
-          Branch(Branch(Leaf(2), Leaf(4)), Leaf(6))
-        )
+        (Branch(Branch(Leaf(1), Leaf(2)), Leaf(3)), Branch(Branch(Leaf(2), Leaf(4)), Leaf(6)))
       )
 
       forEvery(table) { (input, expected) =>
@@ -483,10 +434,7 @@ class Chapter03Spec
         ("input", "expected"),
         (Leaf(1), Leaf(2)),
         (Branch(Leaf(1), Leaf(2)), Branch(Leaf(2), Leaf(4))),
-        (
-          Branch(Branch(Leaf(1), Leaf(2)), Leaf(3)),
-          Branch(Branch(Leaf(2), Leaf(4)), Leaf(6))
-        )
+        (Branch(Branch(Leaf(1), Leaf(2)), Leaf(3)), Branch(Branch(Leaf(2), Leaf(4)), Leaf(6)))
       )
 
       forEvery(table) { (input, expected) =>

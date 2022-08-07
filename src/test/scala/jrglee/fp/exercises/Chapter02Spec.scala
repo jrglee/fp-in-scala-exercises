@@ -4,22 +4,10 @@ import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.prop.TableDrivenPropertyChecks
 
-class Chapter02Spec
-    extends AnyFreeSpec
-    with Matchers
-    with TableDrivenPropertyChecks {
+class Chapter02Spec extends AnyFreeSpec with Matchers with TableDrivenPropertyChecks {
   "2.1" - {
     "should give Fibonacci value for a given position" in {
-      val table = Table(
-        ("input", "expected"),
-        (0, 0),
-        (1, 1),
-        (2, 1),
-        (3, 2),
-        (4, 3),
-        (5, 5),
-        (6, 8)
-      )
+      val table = Table(("input", "expected"), (0, 0), (1, 1), (2, 1), (3, 2), (4, 3), (5, 5), (6, 8))
 
       forEvery(table) { (input, expected) =>
         Chapter02.Ex1.fib(input) shouldBe expected
