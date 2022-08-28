@@ -39,4 +39,21 @@ object Chapter04 {
     val mean = xs.sum / xs.length
     Some(xs.map(x => math.pow(x - mean, 2)).sum / xs.length)
   }
+
+  def map2[A, B, C](a: Option[A], b: Option[B])(f: (A, B) => C): Option[C] = (a, b) match {
+    case (Some(a2), Some(b2)) => Some(f(a2, b2))
+    case _                    => None
+  }
+
+  def sequence[A](a: List[Option[A]]): Option[List[A]] =
+    a.foldRight(Some(List.empty): Option[List[A]]) { (v, acc) =>
+      map2(v, acc)(_ +: _)
+    }
+
+  def traverse[A, B](a: List[A])(f: A => Option[B]): Option[List[B]] =
+    a.foldRight(Some(List.empty): Option[List[B]]) { (v, acc) =>
+      acc.flatMap(tail => f(v).map(_ +: tail))
+    }
+
+  def sequence2[A](a: List[Option[A]]): Option[List[A]] = traverse(a)(identity)
 }

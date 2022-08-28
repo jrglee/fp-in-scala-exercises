@@ -2,7 +2,9 @@ package jrglee.fp.exercises
 
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.prop.TableDrivenPropertyChecks
+import org.scalatest.prop.{TableDrivenPropertyChecks, TableFor2}
+
+import scala.util.Try
 
 class Chapter04Spec extends AnyFreeSpec with Matchers with TableDrivenPropertyChecks {
 
@@ -65,4 +67,65 @@ class Chapter04Spec extends AnyFreeSpec with Matchers with TableDrivenPropertyCh
     }
   }
 
+  "4.3" - {
+    "should map 2 optional values" in {
+      val table = Table(
+        ("a", "b", "expected"),
+        (None, None, None),
+        (Some(1), None, None),
+        (None, Some(1), None),
+        (Some(1), Some(1), Some(2))
+      )
+
+      forEvery(table) { (a, b, c) => map2(a, b)(_ + _) shouldBe c }
+    }
+  }
+
+  "4.4" - {
+    "get values of a list" in {
+      val table: TableFor2[List[Option[Int]], Option[List[Int]]] = Table(
+        ("input", "expected"),
+        (List(None), None),
+        (List(Some(1)), Some(List(1))),
+        (List(Some(1), Some(2)), Some(List(1, 2))),
+        (List(Some(1), None), None),
+        (List(None, Some(1)), None),
+        (List(), Some(List()))
+      )
+
+      forEvery(table) { (input, expected) => sequence(input) shouldEqual expected }
+    }
+  }
+
+  "4.5" - {
+    "traverse a list" in {
+      val table = Table(
+        ("input", "expected"),
+        (List.empty, Some(List.empty)),
+        (List("1"), Some(List(1))),
+        (List("1", "2"), Some(List(1, 2))),
+        (List(""), None),
+        (List("a"), None),
+        (List("1", "a"), None)
+      )
+
+      forEvery(table) { (input, expected) =>
+        traverse(input)(str => Try(str.toInt).fold(_ => None, Some(_))) shouldEqual expected
+      }
+    }
+
+    "sequence from traverse" in {
+      val table: TableFor2[List[Option[Int]], Option[List[Int]]] = Table(
+        ("input", "expected"),
+        (List(None), None),
+        (List(Some(1)), Some(List(1))),
+        (List(Some(1), Some(2)), Some(List(1, 2))),
+        (List(Some(1), None), None),
+        (List(None, Some(1)), None),
+        (List(), Some(List()))
+      )
+
+      forEvery(table) { (input, expected) => sequence2(input) shouldEqual expected }
+    }
+  }
 }
