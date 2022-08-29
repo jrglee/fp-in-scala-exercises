@@ -77,7 +77,7 @@ class Chapter04Spec extends AnyFreeSpec with Matchers with TableDrivenPropertyCh
         (Some(1), Some(1), Some(2))
       )
 
-      forEvery(table) { (a, b, c) => map2(a, b)(_ + _) shouldBe c }
+      forEvery(table) { (a, b, c) => Option.map2(a, b)(_ + _) shouldBe c }
     }
   }
 
@@ -93,7 +93,7 @@ class Chapter04Spec extends AnyFreeSpec with Matchers with TableDrivenPropertyCh
         (List(), Some(List()))
       )
 
-      forEvery(table) { (input, expected) => sequence(input) shouldEqual expected }
+      forEvery(table) { (input, expected) => Option.sequence(input) shouldEqual expected }
     }
   }
 
@@ -110,7 +110,7 @@ class Chapter04Spec extends AnyFreeSpec with Matchers with TableDrivenPropertyCh
       )
 
       forEvery(table) { (input, expected) =>
-        traverse(input)(str => Try(str.toInt).fold(_ => None, Some(_))) shouldEqual expected
+        Option.traverse(input)(str => Try(str.toInt).fold(_ => None, Some(_))) shouldEqual expected
       }
     }
 
@@ -125,7 +125,74 @@ class Chapter04Spec extends AnyFreeSpec with Matchers with TableDrivenPropertyCh
         (List(), Some(List()))
       )
 
-      forEvery(table) { (input, expected) => sequence2(input) shouldEqual expected }
+      forEvery(table) { (input, expected) => Option.sequence2(input) shouldEqual expected }
+    }
+  }
+
+  "4.6" - {
+    "map" in {
+      val table =
+        Table(("input", "expected"), (Right(1), Right(2)), (Right(10), Right(11)), (Left("nope"), Left("nope")))
+
+      forEvery(table) { (input, expected) => input.map(_ + 1) shouldBe expected }
+    }
+
+    "flatMap" in {
+      val table = Table(
+        ("input", "expected"),
+        (Right(1), Left("not enough")),
+        (Right(10), Right(11)),
+        (Left("nope"), Left("nope"))
+      )
+
+      forEvery(table) { (input, expected) =>
+        input.flatMap(v => if (v >= 10) Right(v + 1) else Left("not enough")) shouldBe expected
+      }
+    }
+
+    "orElse" in {
+      val table = Table(("input", "expected"), (Right(1), Right(1)), (Left("nope"), Right(-1)))
+
+      forEvery(table) { (input, expected) =>
+        input.orElse(Right(-1)) shouldBe expected
+      }
+    }
+
+    "map2" in {
+      val table = Table(
+        ("a", "b", "expected"),
+        (Right(1), Right(2), Right(3)),
+        (Right(1), Left("2"), Left("2")),
+        (Left("1"), Right(2), Left("1"))
+      )
+
+      forEvery(table) { (a, b, expected) => a.map2(b)(_ + _) shouldBe expected }
+    }
+  }
+
+  "4.7" - {
+    "sequence with either" in {
+      val table = Table(
+        ("input", "expected"),
+        (List(Right(1), Right(2)), Right(List(1, 2))),
+        (List(Right(1), Left("nope")), Left("nope")),
+        (List(Left("nope"), Left("not really")), Left("nope"))
+      )
+
+      forEvery(table) { (input, expected) => Either.sequence(input) shouldBe expected }
+    }
+
+    "traverse with either" in {
+      val table = Table(
+        ("input", "expected"),
+        (List(10, 11, 12), Right(List(11, 12, 13))),
+        (List(1, 10, 20), Left("not enough")),
+        (List(10, 20, 1), Left("not enough"))
+      )
+
+      forEvery(table) { (input, expected) =>
+        Either.traverse(input)(v => if (v >= 10) Right(v + 1) else Left("not enough")) shouldEqual expected
+      }
     }
   }
 }
