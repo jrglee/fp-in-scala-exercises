@@ -271,4 +271,58 @@ class Chapter05Spec extends AnyFreeSpec with Matchers with TableDrivenPropertyCh
       forEvery(table) { (a, b, expected) => a.zipAll(b).toList shouldEqual (expected.toList) }
     }
   }
+
+  "5.14" - {
+    "should check startWith with unfold" in {
+      val table = Table(
+        ("input", "start", "expected"),
+        (constant(1), Stream.empty, true),
+        (Stream.empty, Stream(1), false),
+        (from2(2), Stream(2, 3, 4), true),
+        (Stream(1, 2), Stream(1), true),
+        (Stream(1), Stream(1, 2), false),
+        (Stream(1), Stream(1), true)
+      )
+
+      forEvery(table) { (input, start, expected) => input.startsWith(start) shouldBe expected }
+    }
+  }
+
+  "5.15" - {
+    "should generate streams with tails" in {
+      val table = Table(
+        ("input", "expected"),
+        (Stream.empty, Stream(Stream.empty)),
+        (Stream(1), Stream(Stream(1), Stream.empty)),
+        (Stream(1, 2), Stream(Stream(1, 2), Stream(2), Stream.empty)),
+        (Stream(1, 2, 3), Stream(Stream(1, 2, 3), Stream(2, 3), Stream(3), Stream.empty))
+      )
+
+      forEvery(table) { (input, expected) =>
+        input.tails.map(_.toList).toList shouldEqual expected.map(_.toList).toList
+      }
+    }
+  }
+
+  "5.16" - {
+    "should scanRight like tails" in {
+      val table = Table(
+        ("input", "expected"),
+        (Stream.empty, Stream(Stream.empty)),
+        (Stream(1), Stream(Stream(1), Stream.empty)),
+        (Stream(1, 2), Stream(Stream(1, 2), Stream(2), Stream.empty)),
+        (Stream(1, 2, 3), Stream(Stream(1, 2, 3), Stream(2, 3), Stream(3), Stream.empty))
+      )
+
+      forEvery(table) { (input, expected) =>
+        input.scanRight(Empty: Stream[Int])((v, acc) => Stream.cons(v, acc)).map(_.toList).toList shouldEqual expected
+          .map(_.toList)
+          .toList
+      }
+    }
+
+    "should work with the example from the book" in {
+      Stream(1, 2, 3).scanRight(0)(_ + _).toList shouldEqual List(6, 5, 3, 0)
+    }
+  }
 }

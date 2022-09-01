@@ -90,6 +90,25 @@ object Chapter05 {
       case (Empty, Cons(h, t))          => Some((None, Some(h())), (Empty, t()))
       case _                            => None
     }
+
+    def startsWith[B >: A](s: Stream[B]): Boolean = unfold(this, s) {
+      case (Cons(h1, t1), Cons(h2, t2)) => Some((h1() == h2(), (t1(), t2())))
+      case (_, Empty)                   => None
+      case (Empty, _)                   => Some(false, (Empty, Empty))
+      case _                            => None
+    }.forAll(identity)
+
+    def tails: Stream[Stream[A]] = unfold(Option(this)) {
+      case Some(s @ Cons(_, t)) => Some((s, Some(t())))
+      case Some(Empty)          => Some((Stream.empty[A], None))
+      case None                 => None
+    }
+
+    def scanRight[B](z: B)(f: (A, => B) => B): Stream[B] = unfold(Option(this)) {
+      case Some(s @ Cons(_, t)) => Some((s.foldRight(z)(f), Some(t())))
+      case Some(Empty)          => Some((z, None))
+      case None                 => None
+    }
   }
   case object Empty extends Stream[Nothing]
   case class Cons[+A](h: () => A, t: () => Stream[A]) extends Stream[A]
