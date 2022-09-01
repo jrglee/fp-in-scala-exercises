@@ -117,15 +117,15 @@ object Chapter03 {
       foldLeft(loop(lst1, lst2, Nil), Nil: List[Int])((b, a) => Cons(a, b))
     }
 
-    def zipWith[A](lst1: List[A], lst2: List[A])(f: (A, A) => A): List[A] = {
-      @tailrec def loop(left: List[A], right: List[A], acc: List[A]): List[A] =
+    def zipWith[A, B, C](lst1: List[A], lst2: List[B])(f: (A, B) => C): List[C] = {
+      @tailrec def loop(left: List[A], right: List[B], acc: List[C]): List[C] =
         (left, right) match {
           case (Cons(lHead, lTail), Cons(rHead, rTail)) =>
             loop(lTail, rTail, Cons(f(lHead, rHead), acc))
           case _ => acc
         }
 
-      foldLeft(loop(lst1, lst2, Nil), Nil: List[A])((b, a) => Cons(a, b))
+      foldLeft(loop(lst1, lst2, Nil), Nil: List[C])((b, a) => Cons(a, b))
     }
 
     def hasSubsequence[A](sup: List[A], sub: List[A]): Boolean = {
