@@ -53,4 +53,32 @@ object Chapter06 {
       val (v, nextRng) = currentRng.nextInt
       (v +: acc, nextRng)
   }
+
+  type Rand[+A] = RNG => (A, RNG)
+
+  val int: Rand[Int] = _.nextInt
+  def unit[A](a: A): Rand[A] = rng => (a, rng)
+  def map[A, B](s: Rand[A])(f: A => B): Rand[B] = { rng =>
+    val (a, rng2) = s(rng)
+    (f(a), rng2)
+  }
+
+  def doubleWithMap(rng: RNG): (Double, RNG) = map(nonNegativeInt)(_.toDouble / Int.MaxValue)(rng)
+
+  def map2[A, B, C](ra: Rand[A], rb: Rand[B])(f: (A, B) => C): Rand[C] = { rng =>
+    val (a, rng2) = ra(rng)
+    val (b, rng3) = rb(rng2)
+    (f(a, b), rng3)
+  }
+
+  def sequence[A](a: List[Rand[A]]): Rand[List[A]] = { rng =>
+    val (randomAs, finalRnd) = a.foldLeft((List.empty[A], rng)) { case ((lst, currentRng), rand) =>
+      val (v, nextRng) = rand(currentRng)
+      (v +: lst, nextRng)
+    }
+    (randomAs.reverse, finalRnd)
+  }
+
+  def intsWithSequence(count: Int)(rng: RNG): (List[Int], RNG) =
+    sequence(List.fill(count)(int))(rng)
 }

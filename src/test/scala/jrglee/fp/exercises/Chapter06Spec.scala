@@ -80,4 +80,30 @@ class Chapter06Spec extends AnyFreeSpec with Matchers with TableDrivenPropertyCh
       }
     }
   }
+
+  "6.5" - {
+    "should generate a double from integer random using map" in {
+      val table = Table("input", 0.5, 0.25, 0.75, 0.95, 1.0, 0.0, 0.1, 0.001)
+
+      forEvery(table) { input =>
+        doubleWithMap(FixedValueRNG((input * Int.MaxValue).toInt))._1 shouldBe input +- 0.00001
+      }
+    }
+  }
+
+  "6.6" - {
+    "should combine two random state data types" in {
+      map2(unit(1), unit(2))(_ + _)(SimpleRNG(10))._1 shouldBe 3
+    }
+  }
+
+  "6.7" - {
+    "should generate a list of random integers with sequence" in {
+      val table = Table("input") ++ (1 to 100)
+
+      forEvery(table) { input =>
+        intsWithSequence(100)(SimpleRNG(input))._1 should have size 100
+      }
+    }
+  }
 }
