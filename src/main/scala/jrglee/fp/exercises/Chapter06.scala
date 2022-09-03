@@ -19,6 +19,10 @@ object Chapter06 {
     override def nextInt: (Int, RNG) = (value, this)
   }
 
+  case class IncrementalValueRNG(value: Int) extends RNG {
+    override def nextInt: (Int, RNG) = (value, IncrementalValueRNG(value + 1))
+  }
+
   def nonNegativeInt(rng: RNG): (Int, RNG) = {
     val (n, nextRNG) = rng.nextInt
     (n & Int.MaxValue, nextRNG)
@@ -57,7 +61,9 @@ object Chapter06 {
   type Rand[+A] = RNG => (A, RNG)
 
   val int: Rand[Int] = _.nextInt
+
   def unit[A](a: A): Rand[A] = rng => (a, rng)
+
   def map[A, B](s: Rand[A])(f: A => B): Rand[B] = { rng =>
     val (a, rng2) = s(rng)
     (f(a), rng2)
@@ -79,6 +85,22 @@ object Chapter06 {
     (randomAs.reverse, finalRnd)
   }
 
-  def intsWithSequence(count: Int)(rng: RNG): (List[Int], RNG) =
-    sequence(List.fill(count)(int))(rng)
+  def intsWithSequence(count: Int)(rng: RNG): (List[Int], RNG) = sequence(List.fill(count)(int))(rng)
+
+  def flatMap[A, B](f: Rand[A])(g: A => Rand[B]): Rand[B] = { rng =>
+    val (a, nextRng) = f(rng)
+    g(a)(nextRng)
+  }
+
+  def nonNegativeLessThan(n: Int): Rand[Int] = flatMap(nonNegativeInt) { i =>
+    val mod = i % n
+    if (i + (n - 1) - mod >= 0) { rng => (mod, rng) }
+    else nonNegativeLessThan(n)
+  }
+
+  def mapWithFlatMap[A, B](s: Rand[A])(f: A => B): Rand[B] = flatMap(s)(a => unit(f(a)))
+
+  def map2WithFlatMap[A, B, C](ra: Rand[A], rb: Rand[B])(f: (A, B) => C): Rand[C] =
+    flatMap(ra)(a => flatMap(rb)(b => unit(f(a, b))))
+
 }

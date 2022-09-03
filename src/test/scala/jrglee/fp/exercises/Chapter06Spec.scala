@@ -106,4 +106,23 @@ class Chapter06Spec extends AnyFreeSpec with Matchers with TableDrivenPropertyCh
       }
     }
   }
+
+  "6.8" - {
+    "should get a non negative less than random number using a flatMap" in {
+      val table = Table(("input", "expected"), (0, 0), (1, 1), (2, 2), (3, 3), (4, 4), (5, 0), (10, 0), (-10, 3))
+
+      forEvery(table) { (input, expected) => nonNegativeLessThan(5)(IncrementalValueRNG(input))._1 shouldBe expected }
+    }
+  }
+
+  "6.9" - {
+    "should map using flatMap" in {
+      mapWithFlatMap(unit(1))(_ + 1)(SimpleRNG(0))._1 shouldBe 2
+    }
+
+    "should map2 using flatMap" in {
+      map2WithFlatMap(unit(1), unit(2.1))((_, _))(SimpleRNG(0))._1 shouldBe (1, 2.1)
+    }
+  }
+
 }
