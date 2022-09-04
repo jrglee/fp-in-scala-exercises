@@ -148,4 +148,32 @@ class Chapter06Spec extends AnyFreeSpec with Matchers with TableDrivenPropertyCh
       s shouldBe IncrementalValueRNG(3)
     }
   }
+
+  "6.11" - {
+    import CandyDispenser._
+    "simulate a candy dispenser machine" in {
+      val table = Table(
+        ("initialState", "inputs", "expectedFinalState"),
+        (Machine(locked = true, 0, 0), List(Coin), Machine(locked = true, 0, 0)),
+        (Machine(locked = true, 0, 0), List(Turn), Machine(locked = true, 0, 0)),
+        (Machine(locked = false, 0, 0), List(Coin), Machine(locked = false, 0, 0)),
+        (Machine(locked = false, 0, 0), List(Turn), Machine(locked = false, 0, 0)),
+        (Machine(locked = true, 1, 0), List(Coin), Machine(locked = false, 1, 0)),
+        (Machine(locked = true, 1, 0), List(Coin, Turn), Machine(locked = true, 0, 1)),
+        (Machine(locked = true, 2, 0), List(Coin, Coin, Turn, Turn), Machine(locked = true, 1, 1)),
+        (
+          Machine(locked = true, 5, 10),
+          List(Coin, Turn, Coin, Turn, Coin, Turn, Coin, Turn),
+          Machine(locked = true, 1, 14)
+        )
+      )
+
+      forEvery(table) { (initialState, inputs, expectedFinalState) =>
+        val ((coins, candies), finalState) = simulateMachine(inputs).run(initialState)
+        coins shouldBe finalState.coins
+        candies shouldBe finalState.candies
+        finalState shouldBe expectedFinalState
+      }
+    }
+  }
 }

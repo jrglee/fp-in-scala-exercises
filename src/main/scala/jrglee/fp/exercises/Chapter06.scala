@@ -132,10 +132,32 @@ object Chapter06 {
 
   type RandState[A] = State[RNG, A]
   object RandState {
-
     def int: RandState[Int] = State(_.nextInt)
 
     def unit[A](a: A): RandState[A] = State.unit(a)
+  }
 
+  object CandyDispenser {
+    sealed trait Input
+    case object Coin extends Input
+    case object Turn extends Input
+
+    case class Machine(locked: Boolean, candies: Int, coins: Int)
+
+    def simulateMachine(inputs: List[Input]): State[Machine, (Int, Int)] = State { initialState =>
+      val finalState = inputs.foldLeft(initialState) { case (currState, input) =>
+        if (currState.candies == 0) currState
+        else {
+          input match {
+            case Coin if currState.locked =>
+              currState.copy(locked = false)
+            case Turn if !currState.locked =>
+              currState.copy(locked = true, candies = currState.candies - 1, coins = currState.coins + 1)
+            case _ => currState
+          }
+        }
+      }
+      ((finalState.coins, finalState.candies), finalState)
+    }
   }
 }
