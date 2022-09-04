@@ -1,6 +1,7 @@
 package jrglee.fp.exercises
-import java.util.concurrent.TimeUnit
+
 import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.{Callable, CountDownLatch, ExecutorService, TimeUnit}
 import scala.concurrent.TimeoutException
 import scala.util.Try
 
@@ -117,4 +118,100 @@ object Chapter07 {
     }
   }
 
+  object Section4 {
+    trait Future[A] {
+      def apply(k: A => Unit): Unit
+    }
+
+    type Par[A] = ExecutorService => Future[A]
+
+    object Par {
+      def run[A](es: ExecutorService)(p: Par[A]): Try[A] = {
+        val ref = new AtomicReference[A]()
+        val latch = new CountDownLatch(1)
+        try {
+          p(es) { a =>
+            ref.set(a)
+            latch.countDown()
+          }
+          latch.await()
+          Try(ref.get)
+        } catch {
+          case e: Throwable =>
+            latch.countDown()
+            Try(throw e)
+        }
+      }
+    }
+  }
+
+  object Section5 {
+    trait Future[A] {
+      def apply(k: A => Unit): Unit
+    }
+
+    type Par[A] = ExecutorService => Future[A]
+
+    object Par {
+      def unit[A](a: A): Par[A] = _ => (cb: A => Unit) => cb(a)
+
+      def fork[A](a: => Par[A]): Par[A] = es => (cb: A => Unit) => eval(es)(a(es)(cb))
+
+      def eval(es: ExecutorService)(r: => Unit): Unit = es.submit(new Callable[Unit] {
+        override def call(): Unit = r
+      })
+
+      def map[A, B](pa: Par[A])(f: A => B): Par[B] = flatMap(pa)(a => unit(f(a)))
+
+      def flatMap[A, B](pa: Par[A])(f: A => Par[B]): Par[B] = es =>
+        (cb: B => Unit) => {
+          val ra = new AtomicReference[A]()
+          val latch = new CountDownLatch(1)
+          pa(es) { a =>
+            ra.set(a)
+            latch.countDown()
+          }
+          latch.await()
+          f(ra.get())(es)(cb)
+        }
+
+      def run[A](es: ExecutorService)(p: Par[A]): A = {
+        val ref = new AtomicReference[A]()
+        val latch = new CountDownLatch(1)
+        p(es) { a =>
+          ref.set(a)
+          latch.countDown()
+        }
+        latch.await()
+        ref.get()
+      }
+
+      def choiceN[A](n: Par[Int])(choices: List[Par[A]]): Par[A] = flatMap(n)(choices(_))
+
+      def choice[A](cond: Par[Boolean])(t: Par[A], f: Par[A]): Par[A] = choiceN(map(cond)(if (_) 0 else 1))(List(t, f))
+
+      def choiceMap[K, V](key: Par[K])(choices: Map[K, Par[V]]): Par[V] = flatMap(key)(choices)
+
+      def chooser[A, B](pa: Par[A])(choices: A => Par[B]): Par[B] = flatMap(pa)(choices)
+
+      def join[A](ppa: Par[Par[A]]): Par[A] = es =>
+        (cb: A => Unit) => {
+          val ref = new AtomicReference[Par[A]]()
+          val latch = new CountDownLatch(1)
+          ppa(es) { a =>
+            ref.set(a)
+            latch.countDown()
+          }
+          latch.await()
+          ref.get()(es)(cb)
+        }
+
+      def joinWithFlatMap[A](ppa: Par[Par[A]]): Par[A] = flatMap(ppa)(identity)
+
+      def flatMapWithJoin[A, B](pa: Par[A])(f: A => Par[B]): Par[B] = join(map(pa)(f))
+
+      def map2[A, B, C](pa: => Par[A], pb: => Par[B])(f: (A, B) => C): Par[C] =
+        flatMap(pa)(a => flatMap(pb)(b => unit(f(a, b))))
+    }
+  }
 }
