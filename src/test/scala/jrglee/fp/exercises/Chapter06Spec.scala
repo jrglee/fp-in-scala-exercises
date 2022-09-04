@@ -125,4 +125,27 @@ class Chapter06Spec extends AnyFreeSpec with Matchers with TableDrivenPropertyCh
     }
   }
 
+  "6.10" - {
+    "unit with state" in {
+      RandState.unit(2).run(SimpleRNG(0))._1 shouldBe 2
+    }
+
+    "map with state" in {
+      val (r, s) = RandState.int.map(_ + 5).run(IncrementalValueRNG(0))
+      r shouldBe 5
+      s shouldBe IncrementalValueRNG(1)
+    }
+
+    "map2 with state" in {
+      val (r, s) = State.map2(RandState.int, RandState.int)((_, _)).run(IncrementalValueRNG(0))
+      r shouldBe (0, 1)
+      s shouldBe IncrementalValueRNG(2)
+    }
+
+    "sequence with state" in {
+      val (r, s) = State.sequence(List(RandState.int, RandState.int, RandState.int)).run(IncrementalValueRNG(0))
+      r shouldEqual List(0, 1, 2)
+      s shouldBe IncrementalValueRNG(3)
+    }
+  }
 }
