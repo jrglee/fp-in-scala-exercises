@@ -23,6 +23,13 @@ object Chapter06 {
     override def nextInt: (Int, RNG) = (value, IncrementalValueRNG(value + 1))
   }
 
+  case class ListOfValueRNG(values: List[Int], fallback: Int = 0) extends RNG {
+    override def nextInt: (Int, RNG) = values match {
+      case head :: tail => (head, ListOfValueRNG(tail, fallback))
+      case Nil          => (fallback, this)
+    }
+  }
+
   def nonNegativeInt(rng: RNG): (Int, RNG) = {
     val (n, nextRNG) = rng.nextInt
     (n & Int.MaxValue, nextRNG)
