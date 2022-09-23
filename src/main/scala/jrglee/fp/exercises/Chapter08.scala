@@ -41,6 +41,11 @@ object Chapter08 {
       def unit[A](a: => A): Gen[A] = Gen(Chapter06.State(Chapter06.unit(a)))
       def boolean: Gen[Boolean] = Gen(Chapter06.State(Chapter06.map(Chapter06.nonNegativeInt)(_ % 2 == 0)))
       def listOfN[A](n: Int, g: Gen[A]): Gen[List[A]] = Gen(Chapter06.State.sequence(List.fill(n)(g.sample)))
+      def union[A](g1: Gen[A], g2: Gen[A]): Gen[A] = boolean.flatMap(if (_) g1 else g2)
+      def weighted[A](g1: (Gen[A], Double), g2: (Gen[A], Double)): Gen[A] = {
+        val g1Fraction = g1._2 / (g1._2 + g2._2)
+        Gen(Chapter06.State(Chapter06.map(Chapter06.double)(_ <= g1Fraction))).flatMap(if (_) g1._1 else g2._1)
+      }
     }
   }
 }

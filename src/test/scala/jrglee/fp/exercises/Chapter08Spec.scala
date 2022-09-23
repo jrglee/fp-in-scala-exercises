@@ -32,7 +32,7 @@ class Chapter08Spec extends AnyFreeSpec with Matchers {
   }
 
   "section 2" - {
-    import Chapter06.{ListOfValueRNG, SimpleRNG, FixedValueRNG}
+    import Chapter06.{FixedValueRNG, IncrementalValueRNG, ListOfValueRNG, SimpleRNG}
     import Section2._
     import org.scalatest.prop.TableDrivenPropertyChecks._
 
@@ -90,5 +90,26 @@ class Chapter08Spec extends AnyFreeSpec with Matchers {
       }
     }
 
+    "8.7" - {
+      "should pull from two generators with equal likelihood" in {
+        val values = Gen.listOfN(10, Gen.union(Gen.unit(1), Gen.unit(2))).sample.run(IncrementalValueRNG(0))._1
+        val grouped = values.groupBy(identity)
+        grouped(1) should have size 5
+        grouped(2) should have size 5
+      }
+    }
+
+    "8.8" - {
+      "should pull from weighted generators" in {
+        val values = Gen
+          .listOfN(12, Gen.weighted((Gen.unit(1), 1), (Gen.unit(2), 2)))
+          .sample
+          .run(ListOfValueRNG(List.fill(100)(List(0, Int.MaxValue / 2, Int.MaxValue)).flatten))
+          ._1
+        val grouped = values.groupBy(identity)
+        grouped(1) should have size 4
+        grouped(2) should have size 8
+      }
+    }
   }
 }
