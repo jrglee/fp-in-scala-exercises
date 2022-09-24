@@ -3,6 +3,8 @@ package jrglee.fp.exercises
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
 
+import scala.util.Failure
+
 class Chapter08Spec extends AnyFreeSpec with Matchers {
   import Chapter08._
 
@@ -109,6 +111,54 @@ class Chapter08Spec extends AnyFreeSpec with Matchers {
         val grouped = values.groupBy(identity)
         grouped(1) should have size 4
         grouped(2) should have size 8
+      }
+    }
+
+    "8.9" - {
+      "&&" - {
+        "should succeed both" in {
+          val prop = Chapter08.Section2.forAll(Gen.unit(1))(_ < 10) &&
+            Chapter08.Section2.forAll(Gen.choose(0, 10))(_ < 20)
+          prop.run(10, FixedValueRNG(5)) shouldBe Passed
+        }
+
+        "should fail right" in {
+          val prop = Chapter08.Section2.forAll(Gen.unit(1))(_ < 10) &&
+            Chapter08.Section2.forAll(Gen.unit(20))(_ < 10)
+          prop.run(10, FixedValueRNG(5)) shouldBe Falsified("20", 0)
+        }
+
+        "should fail left" in {
+          val prop = Chapter08.Section2.forAll(Gen.unit(10))(_ < 10) &&
+            Chapter08.Section2.forAll(Gen.unit(1))(_ < 10)
+          prop.run(10, FixedValueRNG(5)) shouldBe Falsified("10", 0)
+        }
+      }
+
+      "||" - {
+        "should succeed both" in {
+          val prop = Chapter08.Section2.forAll(Gen.unit(1))(_ < 10) ||
+            Chapter08.Section2.forAll(Gen.choose(0, 10))(_ < 20)
+          prop.run(10, FixedValueRNG(5)) shouldBe Passed
+        }
+
+        "should fail right" in {
+          val prop = Chapter08.Section2.forAll(Gen.unit(1))(_ < 10) ||
+            Chapter08.Section2.forAll(Gen.unit(20))(_ < 10)
+          prop.run(10, FixedValueRNG(5)) shouldBe Passed
+        }
+
+        "should fail left" in {
+          val prop = Chapter08.Section2.forAll(Gen.unit(10))(_ < 10) ||
+            Chapter08.Section2.forAll(Gen.unit(1))(_ < 10)
+          prop.run(10, FixedValueRNG(5)) shouldBe Passed
+        }
+
+        "should fail both" in {
+          val prop = Chapter08.Section2.forAll(Gen.unit(10))(_ < 10) ||
+            Chapter08.Section2.forAll(Gen.unit(20))(_ < 10)
+          prop.run(10, FixedValueRNG(5)) shouldBe Falsified("20", 0)
+        }
       }
     }
   }

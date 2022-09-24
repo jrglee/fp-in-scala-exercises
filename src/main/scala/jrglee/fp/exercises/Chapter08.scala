@@ -4,20 +4,63 @@ object Chapter08 {
 
   object Section2 {
 
+    import Prop.{FailedCase, SuccessCount}
+    sealed trait Result {
+      def isFalsified: Boolean
+    }
+
+    case object Passed extends Result {
+      override def isFalsified: Boolean = false
+    }
+
+    case class Falsified(failure: FailedCase, successes: SuccessCount) extends Result {
+      override def isFalsified: Boolean = true
+    }
+
     object Prop {
       type FailedCase = String
       type SuccessCount = Int
     }
 
-    trait Prop {
-      import Prop._
+    type TestCases = Int
+    case class Prop(run: (TestCases, Chapter06.RNG) => Result) {
+      def &&(p: Prop): Prop = Prop { (n, rng) =>
+        run(n, rng) match {
+          case Passed       => p.run(n, rng)
+          case f: Falsified => f
+        }
+      }
 
-      def check: Either[(FailedCase, SuccessCount), SuccessCount]
-
-//      def &&(p: Prop): Prop = if (check) p else this
+      def ||(p: Prop): Prop = Prop { (n, rng) =>
+        run(n, rng) match {
+          case Passed       => Passed
+          case _: Falsified => p.run(n, rng)
+        }
+      }
     }
 
-    def forAll[A](a: Gen[A])(f: A => Boolean): Prop = ???
+    def forAll[A](as: Gen[A])(f: A => Boolean): Prop = Prop { (n, rng) =>
+      randomStream(as)(rng)
+        .zip(LazyList.from(0))
+        .take(n)
+        .map { case (a, i) =>
+          try {
+            if (f(a)) Passed else Falsified(a.toString, i)
+          } catch { case e: Exception => Falsified(buildMsg(a, e), i) }
+        }
+        .find(_.isFalsified)
+        .getOrElse(Passed)
+    }
+
+    def randomStream[A](g: Gen[A])(rng: Chapter06.RNG): LazyList[A] =
+      LazyList.unfold(rng)(rng => Some(g.sample.run(rng)))
+
+    def buildMsg[A](s: A, e: Exception): String =
+      s"""test case: $s
+         |generated an exception: ${e.getMessage}
+         |stack trace
+         |${e.getStackTrace.mkString("\n")}
+         |""".stripMargin
 
     case class Gen[A](sample: Chapter06.State[Chapter06.RNG, A]) {
       def flatMap[B](f: A => Gen[B]): Gen[B] = Gen(Chapter06.State({ currentState =>
