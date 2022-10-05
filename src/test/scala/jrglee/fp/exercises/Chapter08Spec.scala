@@ -3,8 +3,6 @@ package jrglee.fp.exercises
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
 
-import scala.util.Failure
-
 class Chapter08Spec extends AnyFreeSpec with Matchers {
   import Chapter08._
 
@@ -35,20 +33,16 @@ class Chapter08Spec extends AnyFreeSpec with Matchers {
 
   "section 2" - {
     import Chapter06.{FixedValueRNG, IncrementalValueRNG, ListOfValueRNG, SimpleRNG}
-    import Section2._
     import org.scalatest.prop.TableDrivenPropertyChecks._
 
     "8.4" - {
       "should generate from a range" in {
-        val table = Table(
-          ("start", "stop", "values", "expected"),
-          (0, 10, List(0), 0),
-          (0, 10, List(10, 5), 5),
-          (0, 10, List(-1, 10, 3), 3)
-        )
+        val table = Table(("start", "stop"), (0, 10), (-10, 10), (500, 1000))
 
-        forEvery(table) { (start, stop, values, expected) =>
-          Gen.choose(start, stop).sample.run(ListOfValueRNG(values))._1 shouldBe expected
+        forEvery(table) { (start, stop) =>
+          val v = Gen.choose(start, stop).sample.run(SimpleRNG(System.currentTimeMillis()))._1
+          v should be >= start
+          v should be <= stop
         }
       }
     }
@@ -117,48 +111,80 @@ class Chapter08Spec extends AnyFreeSpec with Matchers {
     "8.9" - {
       "&&" - {
         "should succeed both" in {
-          val prop = Chapter08.Section2.forAll(Gen.unit(1))(_ < 10) &&
-            Chapter08.Section2.forAll(Gen.choose(0, 10))(_ < 20)
-          prop.run(10, FixedValueRNG(5)) shouldBe Passed
+          val prop = Chapter08.forAll(Gen.unit(1))(_ < 10) &&
+            Chapter08.forAll(Gen.choose(0, 10))(_ < 20)
+          prop.run(100, 10, FixedValueRNG(5)) shouldBe Passed
         }
 
         "should fail right" in {
-          val prop = Chapter08.Section2.forAll(Gen.unit(1))(_ < 10) &&
-            Chapter08.Section2.forAll(Gen.unit(20))(_ < 10)
-          prop.run(10, FixedValueRNG(5)) shouldBe Falsified("20", 0)
+          val prop = Chapter08.forAll(Gen.unit(1))(_ < 10) &&
+            Chapter08.forAll(Gen.unit(20))(_ < 10)
+          prop.run(100, 10, FixedValueRNG(5)) shouldBe Falsified("20", 0)
         }
 
         "should fail left" in {
-          val prop = Chapter08.Section2.forAll(Gen.unit(10))(_ < 10) &&
-            Chapter08.Section2.forAll(Gen.unit(1))(_ < 10)
-          prop.run(10, FixedValueRNG(5)) shouldBe Falsified("10", 0)
+          val prop = Chapter08.forAll(Gen.unit(10))(_ < 10) &&
+            Chapter08.forAll(Gen.unit(1))(_ < 10)
+          prop.run(100, 10, FixedValueRNG(5)) shouldBe Falsified("10", 0)
         }
       }
 
       "||" - {
         "should succeed both" in {
-          val prop = Chapter08.Section2.forAll(Gen.unit(1))(_ < 10) ||
-            Chapter08.Section2.forAll(Gen.choose(0, 10))(_ < 20)
-          prop.run(10, FixedValueRNG(5)) shouldBe Passed
+          val prop = Chapter08.forAll(Gen.unit(1))(_ < 10) ||
+            Chapter08.forAll(Gen.choose(0, 10))(_ < 20)
+          prop.run(100, 10, FixedValueRNG(5)) shouldBe Passed
         }
 
         "should fail right" in {
-          val prop = Chapter08.Section2.forAll(Gen.unit(1))(_ < 10) ||
-            Chapter08.Section2.forAll(Gen.unit(20))(_ < 10)
-          prop.run(10, FixedValueRNG(5)) shouldBe Passed
+          val prop = Chapter08.forAll(Gen.unit(1))(_ < 10) ||
+            Chapter08.forAll(Gen.unit(20))(_ < 10)
+          prop.run(100, 10, FixedValueRNG(5)) shouldBe Passed
         }
 
         "should fail left" in {
-          val prop = Chapter08.Section2.forAll(Gen.unit(10))(_ < 10) ||
-            Chapter08.Section2.forAll(Gen.unit(1))(_ < 10)
-          prop.run(10, FixedValueRNG(5)) shouldBe Passed
+          val prop = Chapter08.forAll(Gen.unit(10))(_ < 10) ||
+            Chapter08.forAll(Gen.unit(1))(_ < 10)
+          prop.run(100, 10, FixedValueRNG(5)) shouldBe Passed
         }
 
         "should fail both" in {
-          val prop = Chapter08.Section2.forAll(Gen.unit(10))(_ < 10) ||
-            Chapter08.Section2.forAll(Gen.unit(20))(_ < 10)
-          prop.run(10, FixedValueRNG(5)) shouldBe Falsified("20", 0)
+          val prop = Chapter08.forAll(Gen.unit(10))(_ < 10) ||
+            Chapter08.forAll(Gen.unit(20))(_ < 10)
+          prop.run(100, 10, FixedValueRNG(5)) shouldBe Falsified("20", 0)
         }
+      }
+    }
+
+    "8.10" - {
+      "should convert Gen to SGen" in {
+        val gen = Gen.unit(10)
+        gen.unsized.forSize(1) shouldBe gen
+      }
+    }
+
+    "8.11" - {
+      "should flatMap" in {
+        val sgen = Gen.unit(10).unsized.flatMap(v => Gen.unit(v + 1).unsized)
+        sgen.forSize(1).sample.run(FixedValueRNG(5))._1 shouldBe 11
+      }
+    }
+
+    "8.12" - {
+      "should delegate size to SGen" in {
+        SGen.listOf(Gen.unit(5)).forSize(3).sample.run(FixedValueRNG(1))._1 shouldEqual List(5, 5, 5)
+      }
+    }
+
+    "8.13" - {
+      "should generate nonempty lists" in {
+        SGen.listOf1(Gen.unit(5)).forSize(0).sample.run(FixedValueRNG(1))._1 shouldEqual List(5)
+      }
+    }
+
+    "8.14" - {
+      "should validate sorted arrays of small numbers" in {
+        SGen.sortedProp.run(100, 100, Chapter06.SimpleRNG(System.currentTimeMillis())) shouldBe Passed
       }
     }
   }
