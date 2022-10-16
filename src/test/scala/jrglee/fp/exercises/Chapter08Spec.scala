@@ -187,5 +187,10 @@ class Chapter08Spec extends AnyFreeSpec with Matchers {
         SGen.sortedProp.run(100, 100, Chapter06.SimpleRNG(System.currentTimeMillis())) shouldBe Passed
       }
     }
+
+    /*
+      Skipping the rest of the chapter, the exercises are quite abstract and would require refactoring or
+      forking the implementation of previous exercises. Since the exercises are open ended, any solution is valid.
+     */
   }
 }

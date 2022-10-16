@@ -15,9 +15,17 @@ object Chapter08 {
     override def isFalsified: Boolean = true
   }
 
+  case object Proved extends Result {
+    override def isFalsified: Boolean = false
+  }
+
   object Prop {
     type FailedCase = String
     type SuccessCount = Int
+
+    def check(p: => Boolean): Prop = Prop { (_, _, _) =>
+      if (p) Passed else Falsified("()", 0)
+    }
   }
 
   type MaxSize = Int
@@ -68,6 +76,7 @@ object Chapter08 {
   ): Unit = p.run(maxSize, testCases, rng) match {
     case Falsified(msg, n) => println(s"! Falsified after $n passed tests:\n $msg")
     case Passed            => println(s"+ OK, passed $testCases tests.")
+    case Proved            => println(s"+ OK, proved property.")
   }
 
   def randomStream[A](g: Gen[A])(rng: Chapter06.RNG): LazyList[A] =
