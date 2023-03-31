@@ -203,8 +203,8 @@ object Chapter09 {
           .map(a => JArray(a.toVector))
           .trim
       def obj: Parser[JObject] =
-        surround(char('{'), char('}'))(many(str.trim ** char(':').trim ** value <* trailingComma))
-          .map(_.map { case ((k, _), v) => k.get -> v }.toMap)
+        surround(char('{'), char('}'))(many((str.trim.map(_.get) <* char(':').trim) ** (value <* trailingComma)))
+          .map(_.toMap)
           .map(JObject)
           .trim
 
