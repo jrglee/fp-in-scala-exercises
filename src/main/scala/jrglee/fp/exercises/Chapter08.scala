@@ -90,6 +90,8 @@ object Chapter08 {
          |""".stripMargin
 
   case class Gen[A](sample: Chapter06.State[Chapter06.RNG, A]) {
+    def map[B](f: A => B): Gen[B] = Gen(sample.map(f))
+    def map2[B, C](g: Gen[B])(f: (A, B) => C): Gen[C] = Gen(sample.map2(g.sample)(f))
     def flatMap[B](f: A => Gen[B]): Gen[B] = Gen(Chapter06.State({ currentState =>
       val (v, nextState) = sample.run(currentState)
       f(v).sample.run(nextState)
@@ -98,15 +100,21 @@ object Chapter08 {
     def listOfN(size: Gen[Int]): Gen[List[A]] = size.flatMap(s => Gen.listOfN(s, this))
 
     def unsized: SGen[A] = SGen(n => this)
+
+    def **[B](g: Gen[B]): Gen[(A, B)] = (this map2 g)((_, _))
   }
 
   object Gen {
+    private val chars: IndexedSeq[Char] = ('0' to '9') ++ ('A' to 'Z') ++ ('a' to 'Z')
+
     def choose(start: Int, stopExclusive: Int): Gen[Int] = Gen(
       Chapter06.State(Chapter06.nonNegativeInt).map(n => start + n % (stopExclusive - start))
     )
 
     def unit[A](a: => A): Gen[A] = Gen(Chapter06.State(Chapter06.unit(a)))
     def boolean: Gen[Boolean] = Gen(Chapter06.State(Chapter06.map(Chapter06.nonNegativeInt)(_ % 2 == 0)))
+    def stringN(n: Int): Gen[String] = listOfN(n, choose(0, chars.size).map(chars(_))).map(_.mkString)
+    def string: SGen[String] = SGen(stringN)
     def listOfN[A](n: Int, g: Gen[A]): Gen[List[A]] = Gen(Chapter06.State.sequence(List.fill(n)(g.sample)))
     def union[A](g1: Gen[A], g2: Gen[A]): Gen[A] = boolean.flatMap(if (_) g1 else g2)
     def weighted[A](g1: (Gen[A], Double), g2: (Gen[A], Double)): Gen[A] = {
@@ -119,6 +127,8 @@ object Chapter08 {
     def apply(n: Int): Gen[A] = forSize(n)
 
     def flatMap[B](f: A => SGen[B]): SGen[B] = SGen(n => forSize(n).flatMap(v => f(v).forSize(n)))
+
+    def **[B](s2: SGen[B]): SGen[(A, B)] = SGen(n => apply(n) ** s2(n))
   }
 
   object SGen {

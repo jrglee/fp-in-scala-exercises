@@ -117,6 +117,7 @@ object Chapter06 {
     }
 
     def map[B](f: A => B): State[S, B] = flatMap(a => State.unit(f(a)))
+    def map2[B, C](sb: State[S, B])(f: (A, B) => C): State[S, C] = State.map2(this, sb)(f)
   }
 
   object State {
