@@ -44,8 +44,8 @@ object Chapter09 {
     def errorMessage(e: ParseError): String
 
     case class ParserOps[A](p: Parser[A]) {
-      def |[B >: A](p2: Parser[B]): Parser[B] = self.or(p, p2)
-      def or[B >: A](p2: Parser[B]): Parser[B] = self.or(p, p2)
+      def |[B >: A](p2: => Parser[B]): Parser[B] = self.or(p, p2)
+      def or[B >: A](p2: => Parser[B]): Parser[B] = self.or(p, p2)
       def map[B](f: A => B): Parser[B] = self.map(p)(f)
       def **[B](p2: Parser[B]): Parser[(A, B)] = self.product(p, p2)
       def *>[B](p2: Parser[B]): Parser[B] = **(p2).map(_._2)
@@ -193,10 +193,22 @@ object Chapter09 {
       import P._
 
       val str = (char('"') *> regex((".*?" + Pattern.quote("\"")).r).map(_.dropRight(1))).map(JString).trim
+      val number = regex("[0-9]+(\\.[0-9]+)?".r).map(_.toDouble).attempt.map(JNumber).trim
+      val bool = string("true").map(_ => JBool(true)).trim | string("false").map(_ => JBool(false)).trim
+      val jnull = string("null").map(_ => JNull).trim
       val trailingComma = char(',').trim | succeed("")
-      val array = surround(char('['), char(']'))((str <* trailingComma).many).map(a => JArray(a.toVector))
+      def value: Parser[JSON] = str | number | bool | array | obj | jnull
+      def array: Parser[JArray] =
+        surround(char('['), char(']'))((value <* trailingComma).many)
+          .map(a => JArray(a.toVector))
+          .trim
+      def obj: Parser[JObject] =
+        surround(char('{'), char('}'))(many(str.trim ** char(':').trim ** value <* trailingComma))
+          .map(_.map { case ((k, _), v) => k.get -> v }.toMap)
+          .map(JObject)
+          .trim
 
-      str | array
+      obj | array
     }
   }
 

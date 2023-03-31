@@ -1,6 +1,6 @@
 package jrglee.fp.exercises
 
-import jrglee.fp.exercises.Chapter09.JSON.{JArray, JString}
+import jrglee.fp.exercises.Chapter09.JSON.{JArray, JBool, JNull, JNumber, JObject, JString}
 import jrglee.fp.exercises.Chapter09.{Failure, JSON, Location, ParseError, ParserState, Success, MyParsers => P}
 import org.scalatest.Inside
 import org.scalatest.freespec.AnyFreeSpec
@@ -68,20 +68,41 @@ class Chapter09Spec extends AnyFreeSpec with Matchers with Inside {
     }
 
     "9.15" - {
-      "should parse a quoted string" in {
-        inside(JSON.jsonParser(P)(ParserState(""""Hello""""))) { case Success(json, charsConsumed) =>
-          json shouldBe JString("Hello")
-          charsConsumed shouldBe 7
-        }
-      }
-
       "should parse a list of strings" in {
         inside(JSON.jsonParser(P)(ParserState("""[ "Hello", "world" ]"""))) { case Success(json, _) =>
           json shouldBe JArray(Vector(JString("Hello"), JString("world")))
         }
       }
 
-      // TODO rest of the parser
+      "should parse a list of mixed values" in {
+        inside(JSON.jsonParser(P)(ParserState("""["Hello", 123, false]"""))) { case Success(json, _) =>
+          json shouldBe JArray(Vector(JString("Hello"), JNumber(123), JBool(false)))
+        }
+      }
+
+      "should parse an object" in {
+        inside(JSON.jsonParser(P)(ParserState("""
+            |{
+            |  "a": "Hello",
+            |  "b": 123,
+            |  "c": false,
+            |  "d": [ "a", 2, {}, []],
+            |  "e": { "e2": [{}] },
+            |  "f": null
+            |}
+            |""".stripMargin))) { case Success(json, _) =>
+          json shouldBe JObject(
+            Map(
+              "a" -> JString("Hello"),
+              "b" -> JNumber(123.0),
+              "c" -> JBool(false),
+              "d" -> JArray(Vector(JString("a"), JNumber(2.0), JObject(Map()), JArray(Vector()))),
+              "e" -> JObject(Map("e2" -> JArray(Vector(JObject(Map()))))),
+              "f" -> JNull,
+            )
+          )
+        }
+      }
     }
   }
 }
