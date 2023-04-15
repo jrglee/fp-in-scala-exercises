@@ -98,7 +98,7 @@ class Chapter09Spec extends AnyFreeSpec with Matchers with Inside {
               "c" -> JBool(false),
               "d" -> JArray(Vector(JString("a"), JNumber(2.0), JObject(Map()), JArray(Vector()))),
               "e" -> JObject(Map("e2" -> JArray(Vector(JObject(Map()))))),
-              "f" -> JNull,
+              "f" -> JNull
             )
           )
         }
