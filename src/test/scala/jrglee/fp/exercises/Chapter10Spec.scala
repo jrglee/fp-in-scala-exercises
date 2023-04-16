@@ -219,4 +219,10 @@ class Chapter10Spec extends AnyFreeSpec with Matchers with TableDrivenPropertyCh
       foldableOption.toList(Option(1)) shouldEqual List(1)
     }
   }
+
+  "10.18" - {
+    "should count words" in {
+      bag(Vector("a", "rose", "is", "a", "rose")) shouldEqual Map("a" -> 2, "rose" -> 2, "is" -> 1)
+    }
+  }
 }
