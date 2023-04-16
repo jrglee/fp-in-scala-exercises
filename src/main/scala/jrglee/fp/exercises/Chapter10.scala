@@ -1,5 +1,6 @@
 package jrglee.fp.exercises
 
+import jrglee.fp.exercises.Chapter03.Tree
 import jrglee.fp.exercises.Chapter08.{Gen, Prop, forAll}
 
 object Chapter10 {
@@ -48,6 +49,10 @@ object Chapter10 {
     override def op(a1: A => A, a2: A => A): A => A = a1 andThen a2
     override def zero: A => A = identity
   }
+  def dual[A](m: Monoid[A]) = new Monoid[A] {
+    override def op(a1: A, a2: A): A = m.op(a2, a1)
+    override def zero: A = m.zero
+  }
 
   def monoidLaws[A](m: Monoid[A], gen: Gen[A]): Prop =
     forAll(gen)(v => m.op(v, m.zero) == v) &&
@@ -56,13 +61,7 @@ object Chapter10 {
   def concatenate[A](as: List[A], m: Monoid[A]): A = as.foldLeft(m.zero)(m.op)
   def foldMap[A, B](as: List[A], m: Monoid[B])(f: A => B): B = concatenate(as.map(f), m)
   def foldLeft[A, B](as: List[A], b: B)(f: (A, B) => B): B = foldMap(as, endoMonoid[B])(a => b2 => f(a, b2))(b)
-  def foldRight[A, B](as: List[A], b: B)(f: (B, A) => B): B = foldMap(
-    as,
-    new Monoid[B => B] {
-      override def op(b1: B => B, b2: B => B): B => B = b2 andThen b1
-      override def zero: B => B = identity
-    }
-  )(a => b2 => f(b2, a))(b)
+  def foldRight[A, B](as: List[A], b: B)(f: (B, A) => B): B = foldMap(as, dual(endoMonoid[B]))(a => b2 => f(b2, a))(b)
 
   def foldMapV[A, B](v: IndexedSeq[A], m: Monoid[B])(f: A => B): B =
     if (v.isEmpty) m.zero
@@ -108,10 +107,72 @@ object Chapter10 {
     }
 
     if (v.isEmpty) false
-    else
-      foldMapV(v, m)((a: Int) => Some((a, a, true))) match {
-        case Some((_, _, r)) => r
-        case _               => true
-      }
+    else foldMapV(v, m)(a => Some((a, a, true))).exists(_._3)
+  }
+
+  sealed trait WC
+  case class Stub(chars: String) extends WC
+  case class Part(lStub: String, words: Int, rStub: String) extends WC
+
+  val wcMonoid = new Monoid[WC] {
+    override def op(a1: WC, a2: WC): WC = (a1, a2) match {
+      case (Stub(c1), Stub(c2))                                 => Stub(c1 + c2)
+      case (Part(lStub, words, rStub), Stub(c))                 => Part(lStub, words, rStub + c)
+      case (Stub(c), Part(lStub, words, rStub))                 => Part(c + lStub, words, rStub)
+      case (Part(lStub1, words1, ""), Part("", words2, rStub2)) => Part(lStub1, words1 + words2, rStub2)
+      case (Part(lStub1, words1, _), Part(_, words2, rStub2))   => Part(lStub1, words1 + words2 + 1, rStub2)
+    }
+    override def zero: WC = Part("", 0, "")
+  }
+
+  def countWords(str: String): Int =
+    foldMapV(str.toIndexedSeq, wcMonoid) { c =>
+      if (c.isWhitespace) wcMonoid.zero
+      else Stub(c.toString)
+    } match {
+      case Stub(chars)               => Math.min(chars.length, 1)
+      case Part(lStub, words, rStub) => Math.min(lStub.length, 1) + words + Math.min(rStub.length, 1)
+    }
+
+  trait Foldable[F[_]] {
+    def foldRight[A, B](as: F[A])(z: B)(f: (A, B) => B): B
+    def foldLeft[A, B](as: F[A])(z: B)(f: (B, A) => B): B
+    def foldMap[A, B](as: F[A])(f: A => B)(mb: Monoid[B]): B
+    def concatenate[A](as: F[A])(m: Monoid[A]): A = foldLeft(as)(m.zero)(m.op)
+    def toList[A](fa: F[A]): List[A] = foldMap(fa)(a => List(a))(listMonoid)
+  }
+
+  val foldableList = new Foldable[List] {
+    override def foldRight[A, B](as: List[A])(z: B)(f: (A, B) => B): B = as.foldRight(z)(f)
+    override def foldLeft[A, B](as: List[A])(z: B)(f: (B, A) => B): B = as.foldLeft(z)(f)
+    override def foldMap[A, B](as: List[A])(f: A => B)(mb: Monoid[B]): B = concatenate(as.map(f))(mb)
+  }
+
+  val foldableIndexedSeq = new Foldable[IndexedSeq] {
+    override def foldRight[A, B](as: IndexedSeq[A])(z: B)(f: (A, B) => B): B = as.foldRight(z)(f)
+    override def foldLeft[A, B](as: IndexedSeq[A])(z: B)(f: (B, A) => B): B = as.foldLeft(z)(f)
+    override def foldMap[A, B](as: IndexedSeq[A])(f: A => B)(mb: Monoid[B]): B = concatenate(as.map(f))(mb)
+  }
+
+  val foldableStream = new Foldable[LazyList] {
+    override def foldRight[A, B](as: LazyList[A])(z: B)(f: (A, B) => B): B = as.foldRight(z)(f)
+    override def foldLeft[A, B](as: LazyList[A])(z: B)(f: (B, A) => B): B = as.foldLeft(z)(f)
+    override def foldMap[A, B](as: LazyList[A])(f: A => B)(mb: Monoid[B]): B = concatenate(as.map(f))(mb)
+  }
+
+  val foldableTree = new Foldable[Tree] {
+    override def foldRight[A, B](as: Tree[A])(z: B)(f: (A, B) => B): B =
+      foldMap(as)(a => (b: B) => f(a, b))(dual(endoMonoid[B]))(z)
+    override def foldLeft[A, B](as: Tree[A])(z: B)(f: (B, A) => B): B =
+      foldMap(as)(a => (b: B) => f(b, a))(endoMonoid[B])(z)
+    override def foldMap[A, B](as: Tree[A])(f: A => B)(mb: Monoid[B]): B = Tree.fold(as)(f, mb.op)
+  }
+
+  val foldableOption = new Foldable[Option] {
+    override def foldRight[A, B](as: Option[A])(z: B)(f: (A, B) => B): B =
+      foldMap(as)(a => (b: B) => f(a, b))(endoMonoid[B])(z)
+    override def foldLeft[A, B](as: Option[A])(z: B)(f: (B, A) => B): B =
+      foldMap(as)(a => (b: B) => f(b, a))(endoMonoid[B])(z)
+    override def foldMap[A, B](as: Option[A])(f: A => B)(mb: Monoid[B]): B = as.fold(mb.zero)(f)
   }
 }

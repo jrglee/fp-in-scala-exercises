@@ -1,13 +1,15 @@
 package jrglee.fp.exercises
 
+import jrglee.fp.exercises.Chapter03.{Branch, Leaf}
 import jrglee.fp.exercises.Chapter07.Section5
 import jrglee.fp.exercises.Chapter08.Gen
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.prop.TableDrivenPropertyChecks
 
 import java.util.concurrent.ForkJoinPool
 
-class Chapter10Spec extends AnyFreeSpec with Matchers {
+class Chapter10Spec extends AnyFreeSpec with Matchers with TableDrivenPropertyChecks {
 
   import Chapter10._
 
@@ -117,6 +119,104 @@ class Chapter10Spec extends AnyFreeSpec with Matchers {
 
     "should handle empty" in {
       isOrdered(Array.empty[Int]) shouldBe false
+    }
+  }
+
+  "10.10" - {
+    "should combine text" in {
+      val table = Table(
+        ("lhs", "rhs", "expected"),
+        (Stub("a"), Stub("b"), Stub("ab")),
+        (Stub("a"), Part("b", 0, ""), Part("ab", 0, "")),
+        (Part("", 0, "a"), Stub("b"), Part("", 0, "ab")),
+        (Part("", 0, "a"), Part("b", 0, ""), Part("", 1, "")),
+        (Part("a", 0, ""), Part("", 0, "b"), Part("a", 0, "b"))
+      )
+
+      forEvery(table) { (lhs, rhs, expected) => wcMonoid.op(lhs, rhs) shouldBe expected }
+    }
+
+    "should satisfy laws" in {
+      val gen: Gen[WC] = Gen.weighted(
+        (
+          for {
+            lStub <- Gen.weighted((Gen.unit(""), 0.2d), (Gen.stringN(2), 0.8d))
+            words <- Gen.choose(0, 10)
+            rStub <- Gen.weighted((Gen.unit(""), 0.2d), (Gen.stringN(2), 0.8d))
+          } yield Part(lStub, words, rStub),
+          0.8d
+        ),
+        (Gen.stringN(2).map(Stub), 0.2d)
+      )
+      Chapter08.run(monoidLaws(wcMonoid, gen))
+      succeed
+    }
+  }
+
+  "10.11" - {
+    "should count words" in {
+      val table = Table(
+        ("input", "count"),
+        ("", 0),
+        ("a", 1),
+        ("a ", 1),
+        (" a ", 1),
+        ("a b", 2),
+        ("lorem ipsum dolor sit amet, ", 5)
+      )
+
+      forEvery(table) { (input, count) => countWords(input) shouldBe count }
+    }
+  }
+
+  "10.13" - {
+    val table = Table(
+      ("input", "expected"),
+      (Leaf(0), "0"),
+      (Branch(Leaf(0), Leaf(1)), "01"),
+      (Branch(Branch(Leaf(0), Leaf(1)), Leaf(2)), "012")
+    )
+
+    "should foldRight" in {
+      forEvery(table) { (input, expected) =>
+        foldableTree.foldRight(input)("") { (v, acc) => v.toString + acc } shouldBe expected
+      }
+    }
+
+    "should foldLeft" in {
+      forEvery(table) { (input, expected) =>
+        foldableTree.foldLeft(input)("") { (acc, v) => acc + v } shouldBe expected
+      }
+    }
+
+    "should foldMap" in {
+      forEvery(table) { (input, expected) =>
+        foldableTree.foldMap(input)(_.toString)(stringMonoid) shouldBe expected
+      }
+    }
+  }
+
+  "10.14" - {
+    "should foldRight" in {
+      foldableOption.foldRight(None: Option[Int])(1)(_ + _) shouldBe 1
+      foldableOption.foldRight(Some(1))(1)(_ + _) shouldBe 2
+    }
+
+    "should foldLeft" in {
+      foldableOption.foldLeft(None: Option[Int])(1)(_ + _) shouldBe 1
+      foldableOption.foldLeft(Some(1))(1)(_ + _) shouldBe 2
+    }
+
+    "should foldMap" in {
+      foldableOption.foldMap(None: Option[Int])(_.toString)(stringMonoid) shouldBe ""
+      foldableOption.foldMap(Some(1))(_.toString)(stringMonoid) shouldBe "1"
+    }
+  }
+
+  "10.15" - {
+    "should convert to list" in {
+      foldableOption.toList(None) shouldBe empty
+      foldableOption.toList(Option(1)) shouldEqual List(1)
     }
   }
 }
