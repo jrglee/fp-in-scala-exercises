@@ -98,11 +98,8 @@ object Chapter10 {
     val m = new Monoid[Option[(Int, Int, Boolean)]] {
       override def op(a1: Option[(Int, Int, Boolean)], a2: Option[(Int, Int, Boolean)]): Option[(Int, Int, Boolean)] =
         (a1, a2) match {
-          case (Some((min1, max1, true)), Some((min2, max2, true))) =>
-            if (max1 <= min2) Some((min1, max2, true))
-            else Some((Math.min(min1, min2), Math.max(max1, max2), false))
-          case (Some((min1, max1, _)), Some((min2, max2, _))) =>
-            Some((Math.min(min1, min2), Math.max(max1, max2), false))
+          case (Some((min1, max1, lMatch)), Some((min2, max2, rMatch))) =>
+            Some((Math.min(min1, min2), Math.max(max1, max2), lMatch && rMatch && max1 <= min2))
           case (None, x) => x
           case _         => None
         }
