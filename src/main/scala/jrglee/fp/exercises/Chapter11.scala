@@ -42,6 +42,8 @@ object Chapter11 {
 
     def compose[A, B, C](f: A => F[B], g: B => F[C]): A => F[C] = a => flatMap(f(a))(g)
     def flatMapWithCompose[A, B](fa: F[A])(f: A => F[B]): F[B] = compose((_: Unit) => fa, f)(())
+    def join[A](mma: F[F[A]]): F[A] = flatMap(mma)(identity)
+    def composerWithJoinAndMap[A, B, C](f: A => F[B], g: B => F[C]): A => F[C] = a => join(map(f(a))(g))
   }
 
   object Monad {

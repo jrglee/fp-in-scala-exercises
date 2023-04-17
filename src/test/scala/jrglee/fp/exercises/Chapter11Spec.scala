@@ -36,4 +36,26 @@ class Chapter11Spec extends AnyFreeSpec with Matchers {
     }
   }
 
+  "11.11" - {
+    import jrglee.fp.exercises.Chapter08.Gen
+
+    def unit(a: Int): Option[Int] = Monad.optionMonad.unit(a)
+    def f(a: Int): Option[Int] = Some(a * 2)
+
+    "should prove left identity with compose" in {
+      Chapter08.run(Chapter08.forAll(Gen.choose(0, 10))(v => Monad.optionMonad.compose(f, unit)(v) == f(v)))
+    }
+
+    "should prove right identity with compose" in {
+      Chapter08.run(Chapter08.forAll(Gen.choose(0, 10))(v => Monad.optionMonad.compose(unit, f)(v) == f(v)))
+    }
+
+    "should prove left identity with flatMap" in {
+      Chapter08.run(Chapter08.forAll(Gen.choose(0, 10))(v => Monad.optionMonad.flatMap(Option(v))(unit) == Option(v)))
+    }
+
+    "should prove right identity with flatMap" in {
+      Chapter08.run(Chapter08.forAll(Gen.choose(0, 10))(v => Monad.optionMonad.flatMap(unit(v))(f) == f(v)))
+    }
+  }
 }
