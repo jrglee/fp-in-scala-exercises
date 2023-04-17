@@ -97,5 +97,32 @@ object Chapter11 {
         override def flatMap[A, B](fa: StateS[A])(f: A => StateS[B]): StateS[B] = fa.flatMap(f)
       }
     }
+
+    val idMonad: Monad[Id] = new Monad[Id] {
+      override def unit[A](a: => A): Id[A] = Id(a)
+      override def flatMap[A, B](fa: Id[A])(f: A => Id[B]): Id[B] = fa.flatMap(f)
+    }
+
+    def stateMonad[S] = new Monad[({ type f[x] = State[S, x] })#f] {
+      override def unit[A](a: => A): State[S, A] = State(s => (a, s))
+      override def flatMap[A, B](st: State[S, A])(f: A => State[S, B]): State[S, B] = st.flatMap(f)
+    }
+
+    def getState[S]: State[S, S] = State(s => (s, s))
+    def setState[S](s: => S): State[S, Unit] = State(_ => ((), s))
+  }
+
+  case class Id[A](value: A) {
+    def map[B](f: A => B): Id[B] = Id(f(value))
+    def flatMap[B](f: A => Id[B]): Id[B] = f(value)
+  }
+
+  case class Reader[R, A](run: R => A)
+  object Reader {
+    def readerMonad[R] = new Monad[({ type f[x] = Reader[R, x] })#f] {
+      override def unit[A](a: => A): Reader[R, A] = Reader(_ => a)
+      override def flatMap[A, B](st: Reader[R, A])(f: A => Reader[R, B]): Reader[R, B] =
+        Reader(r => f(st.run(r)).run(r))
+    }
   }
 }
