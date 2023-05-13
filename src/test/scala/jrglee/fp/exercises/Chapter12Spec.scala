@@ -83,7 +83,7 @@ class Chapter12Spec extends AnyFreeSpec with Matchers with TableDrivenPropertyCh
     }
   }
 
-  "12.16" - {
+  "12.6" - {
     "should combine validation results" in {
       val table = Table[Validation[String, Int], Validation[String, Int], Validation[String, Int]](
         ("lhs", "rhs", "expected"),
@@ -95,6 +95,22 @@ class Chapter12Spec extends AnyFreeSpec with Matchers with TableDrivenPropertyCh
       forEvery(table) { (lhs, rhs, expected) =>
         Applicative.validationApplicative[String].map2(lhs, rhs)(_ + _) shouldBe expected
       }
+    }
+  }
+
+  "12.8" - {
+    "should combine like monoids" in {
+      optionApplicative
+        .product(Applicative.validationApplicative[String])
+        .map(Some(1) -> Success(2))(_ + 1) shouldBe (Some(2), Success(3))
+    }
+  }
+
+  "12.9" - {
+    "should compose" in {
+      optionApplicative
+        .compose(Applicative.validationApplicative[String])
+        .map(Some(Success(2)))(_ + 1) shouldBe Some(Success(3))
     }
   }
 }

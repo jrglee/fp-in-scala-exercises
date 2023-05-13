@@ -4,7 +4,7 @@ import jrglee.fp.exercises.Chapter11.Functor
 
 object Chapter12 {
 
-  trait Applicative[F[_]] extends Functor[F] {
+  trait Applicative[F[_]] extends Functor[F] { self =>
     // primitive combinators
     def apply[A, B](fab: F[A => B])(fa: F[A]): F[B]
     def unit[A](a: => A): F[A]
@@ -25,6 +25,18 @@ object Chapter12 {
     def sequence[A](fas: List[F[A]]): F[List[A]] = traverse(fas)(identity)
     def replicateM[A](n: Int, fa: F[A]): F[List[A]] = sequence(List.fill(n)(fa))
     def product[A, B](fa: F[A], fb: F[B]): F[(A, B)] = map2(fa, fb)(_ -> _)
+    def product[G[_]](G: Applicative[G]): Applicative[({ type f[x] = (F[x], G[x]) })#f] =
+      new Applicative[({ type f[x] = (F[x], G[x]) })#f] {
+        override def apply[A, B](fab: (F[A => B], G[A => B]))(fa: (F[A], G[A])): (F[B], G[B]) =
+          (self.apply(fab._1)(fa._1), G.apply(fab._2)(fa._2))
+        override def unit[A](a: => A): (F[A], G[A]) = (self.unit(a), G.unit(a))
+      }
+    def compose[G[_]](G: Applicative[G]): Applicative[({ type f[x] = F[G[x]] })#f] =
+      new Applicative[({ type f[x] = F[G[x]] })#f] {
+        override def apply[A, B](fab: F[G[A => B]])(fa: F[G[A]]): F[G[B]] =
+          self.map2(fab, fa)((gab, ga) => G.apply(gab)(ga))
+        override def unit[A](a: => A): F[G[A]] = self.unit(G.unit(a))
+      }
   }
 
   object Applicative {
@@ -72,4 +84,5 @@ object Chapter12 {
   sealed trait Validation[+E, +A]
   case class Failure[E](head: E, tail: Vector[E] = Vector.empty) extends Validation[E, Nothing]
   case class Success[A](a: A) extends Validation[Nothing, A]
+
 }
