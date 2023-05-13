@@ -37,6 +37,9 @@ object Chapter12 {
           self.map2(fab, fa)((gab, ga) => G.apply(gab)(ga))
         override def unit[A](a: => A): F[G[A]] = self.unit(G.unit(a))
       }
+    def sequenceMap[K, V](ofa: Map[K, F[V]]): F[Map[K, V]] = ofa.foldLeft(unit(Map.empty[K, V])) {
+      case (facc, (k, fv)) => map2(facc, fv)((acc, v) => acc + (k -> v))
+    }
   }
 
   object Applicative {

@@ -113,4 +113,16 @@ class Chapter12Spec extends AnyFreeSpec with Matchers with TableDrivenPropertyCh
         .map(Some(Success(2)))(_ + 1) shouldBe Some(Success(3))
     }
   }
+
+  "12.12" - {
+    "should sequence a map" in {
+      val table = Table(
+        ("input", "expected"),
+        (Map(1 -> Some(1), 2 -> Some(2)), Some(Map(1 -> 1, 2 -> 2))),
+        (Map(1 -> Some(1), 2 -> None), None)
+      )
+
+      forEvery(table) { (input, expected) => optionApplicative.sequenceMap(input) shouldEqual expected }
+    }
+  }
 }
