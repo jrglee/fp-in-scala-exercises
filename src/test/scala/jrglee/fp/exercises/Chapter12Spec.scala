@@ -1,6 +1,6 @@
 package jrglee.fp.exercises
 
-import jrglee.fp.exercises.Chapter12.Applicative
+import jrglee.fp.exercises.Chapter12.{Applicative, Monad}
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.prop.TableDrivenPropertyChecks
@@ -73,6 +73,13 @@ class Chapter12Spec extends AnyFreeSpec with Matchers with TableDrivenPropertyCh
 
     "should map4" in {
       optionApplicative.map4(Option(1), Option(2), Option(3), Option(4))(_ + _ + _ + _) shouldBe Option(10)
+    }
+  }
+
+  "12.5" - {
+    "should map Either" in {
+      Monad.eitherMonad[String].map(Right(1))(_ * 2) shouldBe Right(2)
+      Monad.eitherMonad[String].map(Left("foo"): Either[String, Int])(_ * 2) shouldBe Left("foo")
     }
   }
 }

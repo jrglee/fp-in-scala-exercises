@@ -34,6 +34,20 @@ object Chapter12 {
 
       override def unit[A](a: => A): LazyList[A] = LazyList.continually(a)
     }
+
+    def validationApplicative[E]: Applicative[({ type f[x] = Validation[E, x] })#f] =
+      new Applicative[({ type f[x] = Validation[E, x] })#f] {
+        override def apply[A, B](fab: Validation[E, A => B])(fa: Validation[E, A]): Validation[E, B] = fab match {
+          case Success(f) =>
+            fa match {
+              case Success(a)    => unit(f(a))
+              case f: Failure[E] => f
+            }
+          case f: Failure[E] => f
+        }
+
+        override def unit[A](a: => A): Validation[E, A] = Success(a)
+      }
   }
 
   trait Monad[F[_]] extends Applicative[F] {
@@ -44,4 +58,20 @@ object Chapter12 {
     override def map[A, B](fa: F[A])(f: A => B): F[B] = flatMap(fa)((a: A) => unit(f(a)))
     override def map2[A, B, C](fa: F[A], fb: F[B])(f: (A, B) => C): F[C] = flatMap(fa)(a => map(fb)(b => f(a, b)))
   }
+  object Monad {
+    def eitherMonad[E]: Monad[({ type f[x] = Either[E, x] })#f] = new Monad[({ type f[x] = Either[E, x] })#f] {
+      override def apply[A, B](fab: Either[E, A => B])(fa: Either[E, A]): Either[E, B] = for {
+        f <- fab
+        a <- fa
+      } yield f(a)
+
+      override def unit[A](a: => A): Either[E, A] = Right(a)
+
+      override def flatMap[A, B](fa: Either[E, A])(f: A => Either[E, B]): Either[E, B] = fa.flatMap(f)
+    }
+  }
+
+  sealed trait Validation[+E, +A]
+  case class Failure[E](head: E, tail: Vector[E] = Vector.empty) extends Validation[E, Nothing]
+  case class Success[A](a: A) extends Validation[Nothing, A]
 }
