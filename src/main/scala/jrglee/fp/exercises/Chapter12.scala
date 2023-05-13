@@ -37,13 +37,11 @@ object Chapter12 {
 
     def validationApplicative[E]: Applicative[({ type f[x] = Validation[E, x] })#f] =
       new Applicative[({ type f[x] = Validation[E, x] })#f] {
-        override def apply[A, B](fab: Validation[E, A => B])(fa: Validation[E, A]): Validation[E, B] = fab match {
-          case Success(f) =>
-            fa match {
-              case Success(a)    => unit(f(a))
-              case f: Failure[E] => f
-            }
-          case f: Failure[E] => f
+        override def apply[A, B](fab: Validation[E, A => B])(fa: Validation[E, A]): Validation[E, B] = (fab, fa) match {
+          case (Success(f), Success(a))         => unit(f(a))
+          case (f: Failure[E], Success(_))      => f
+          case (Success(_), f: Failure[E])      => f
+          case (fa: Failure[E], fb: Failure[E]) => fa.copy(tail = fa.tail ++ Vector(fb.head) ++ fb.tail)
         }
 
         override def unit[A](a: => A): Validation[E, A] = Success(a)

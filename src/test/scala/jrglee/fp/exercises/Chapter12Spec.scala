@@ -1,9 +1,9 @@
 package jrglee.fp.exercises
 
-import jrglee.fp.exercises.Chapter12.{Applicative, Monad}
+import jrglee.fp.exercises.Chapter12.{Applicative, Failure, Monad, Success, Validation}
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.prop.TableDrivenPropertyChecks
+import org.scalatest.prop.{TableDrivenPropertyChecks, TableFor2}
 
 class Chapter12Spec extends AnyFreeSpec with Matchers with TableDrivenPropertyChecks {
 
@@ -80,6 +80,21 @@ class Chapter12Spec extends AnyFreeSpec with Matchers with TableDrivenPropertyCh
     "should map Either" in {
       Monad.eitherMonad[String].map(Right(1))(_ * 2) shouldBe Right(2)
       Monad.eitherMonad[String].map(Left("foo"): Either[String, Int])(_ * 2) shouldBe Left("foo")
+    }
+  }
+
+  "12.16" - {
+    "should combine validation results" in {
+      val table = Table[Validation[String, Int], Validation[String, Int], Validation[String, Int]](
+        ("lhs", "rhs", "expected"),
+        (Failure("Error"), Success(1), Failure("Error")),
+        (Success(1), Success(2), Success(3)),
+        (Failure("A"), Failure("B"), Failure("A", Vector("B")))
+      )
+
+      forEvery(table) { (lhs, rhs, expected) =>
+        Applicative.validationApplicative[String].map2(lhs, rhs)(_ + _) shouldBe expected
+      }
     }
   }
 }
