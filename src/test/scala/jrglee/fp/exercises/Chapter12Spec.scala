@@ -169,4 +169,10 @@ class Chapter12Spec extends AnyFreeSpec with Matchers with TableDrivenPropertyCh
       }
     }
   }
+
+  "12.15" - {
+    "should foldMap with traverse" in {
+      Traverse.listTraverse.foldMap(List(1, 2, 3))(_ * 2)(Chapter10.intAddition) shouldBe 12
+    }
+  }
 }

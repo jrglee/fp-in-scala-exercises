@@ -1,6 +1,7 @@
 package jrglee.fp.exercises
 
 import jrglee.fp.exercises.Chapter03.{Branch, Leaf, Tree}
+import jrglee.fp.exercises.Chapter10.{Foldable, Monoid}
 import jrglee.fp.exercises.Chapter11.Functor
 
 object Chapter12 {
@@ -108,13 +109,19 @@ object Chapter12 {
   case class Failure[E](head: E, tail: Vector[E] = Vector.empty) extends Validation[E, Nothing]
   case class Success[A](a: A) extends Validation[Nothing, A]
 
-  trait Traverse[F[_]] extends Functor[F] {
+  trait Traverse[F[_]] extends Functor[F] with Foldable[F] {
     def traverse[G[_]: Applicative, A, B](fa: F[A])(f: A => G[B]): G[F[B]]
     def sequence[G[_]: Applicative, A](fga: F[G[A]]): G[F[A]] = traverse(fga)(identity)
     def map[A, B](fa: F[A])(f: A => B): F[B] = {
       implicit val G: Applicative[Applicative.Id] = Applicative.idApplicative
       traverse(fa)(v => G.unit(f(v)))
     }
+
+    override def foldRight[A, B](as: F[A])(z: B)(f: (A, B) => B): B = ???
+    override def foldLeft[A, B](as: F[A])(z: B)(f: (B, A) => B): B = ???
+    override def foldMap[A, B](as: F[A])(f: A => B)(mb: Monoid[B]): B =
+      traverse[({ type f[x] = Const[B, x] })#f, A, Nothing](as)(f)(monoidApplicative(mb))
+
   }
 
   object Traverse {
@@ -134,4 +141,16 @@ object Chapter12 {
           .fold[A, G[Tree[B]]](fa)(v => G.map(f(v))(ga => Leaf(ga)), (gl, gr) => G.map2(gl, gr)((l, r) => Branch(l, r)))
     }
   }
+
+  type Const[M, B] = M
+
+  implicit def monoidApplicative[M](M: Monoid[M]): Applicative[
+    ({
+      type f[x] = Const[M, x]
+    })#f
+  ] = new Applicative[({ type f[x] = Const[M, x] })#f] {
+    override def apply[A, B](fab: Const[M, A => B])(fa: Const[M, A]): Const[M, B] = M.op(fab, fa)
+    override def unit[A](a: => A): Const[M, A] = M.zero
+  }
+
 }
