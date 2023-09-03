@@ -1,15 +1,21 @@
 package jrglee.fp.exercises
 
-import jrglee.fp.exercises.Chapter12.{Applicative, Failure, Monad, Success, Validation}
+import jrglee.fp.exercises.Chapter03.{Branch, Leaf, Tree}
+import jrglee.fp.exercises.Chapter12._
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.prop.{TableDrivenPropertyChecks, TableFor2}
 
 class Chapter12Spec extends AnyFreeSpec with Matchers with TableDrivenPropertyChecks {
 
-  val optionApplicative = new Applicative[Option] {
+  private val optionApplicative = new Applicative[Option] {
     override def apply[A, B](fab: Option[A => B])(fa: Option[A]): Option[B] = fab.flatMap(f => fa.map(f))
     override def unit[A](a: => A): Option[A] = Option(a)
+  }
+
+  private val listApplicative = new Applicative[List] {
+    override def apply[A, B](fab: List[A => B])(fa: List[A]): List[B] = fab.flatMap(f => fa.map(f))
+    override def unit[A](a: => A): List[A] = List(a)
   }
 
   "12.1" - {
@@ -123,6 +129,34 @@ class Chapter12Spec extends AnyFreeSpec with Matchers with TableDrivenPropertyCh
       )
 
       forEvery(table) { (input, expected) => optionApplicative.sequenceMap(input) shouldEqual expected }
+    }
+  }
+
+  "12.13" - {
+    implicit val optionApp: Applicative[Option] = optionApplicative
+    implicit val listApp: Applicative[List] = listApplicative
+
+    "list" - {
+      "should traverse" in {
+        Traverse.listTraverse.sequence(List(Option(1), Option(2))) shouldEqual Option(List(1, 2))
+        Traverse.listTraverse.sequence(List(Option(1), None)) shouldEqual None
+      }
+    }
+
+    "option" - {
+      "should traverse" in {
+        Traverse.optionTraverse.sequence(Option(List(1))) shouldEqual List(Option(1))
+        Traverse.optionTraverse.sequence(Option(List.empty[Int])) shouldEqual List.empty[Int]
+      }
+    }
+
+    "tree" - {
+      "should traverse" in {
+        Traverse.treeTraverse.sequence(Branch(Leaf(Option(1)), Leaf(Option(2)))) shouldEqual Option(
+          Branch(Leaf(1), Leaf(2))
+        )
+        Traverse.treeTraverse.sequence(Branch(Leaf(Option(1)), Leaf(None))) shouldEqual None
+      }
     }
   }
 }

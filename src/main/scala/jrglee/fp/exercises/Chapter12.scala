@@ -1,5 +1,6 @@
 package jrglee.fp.exercises
 
+import jrglee.fp.exercises.Chapter03.{Branch, Leaf, Tree}
 import jrglee.fp.exercises.Chapter11.Functor
 
 object Chapter12 {
@@ -88,4 +89,26 @@ object Chapter12 {
   case class Failure[E](head: E, tail: Vector[E] = Vector.empty) extends Validation[E, Nothing]
   case class Success[A](a: A) extends Validation[Nothing, A]
 
+  trait Traverse[F[_]] {
+    def traverse[G[_]: Applicative, A, B](fa: F[A])(f: A => G[B]): G[F[B]]
+    def sequence[G[_]: Applicative, A](fga: F[G[A]]): G[F[A]] = traverse(fga)(identity)
+  }
+
+  object Traverse {
+    val listTraverse: Traverse[List] = new Traverse[List] {
+      override def traverse[G[_], A, B](fa: List[A])(f: A => G[B])(implicit G: Applicative[G]): G[List[B]] =
+        fa.foldRight(G.unit(List.empty[B]))((v, tail) => G.map2(f(v), tail)(_ +: _))
+    }
+
+    val optionTraverse: Traverse[Option] = new Traverse[Option] {
+      override def traverse[G[_], A, B](fa: Option[A])(f: A => G[B])(implicit G: Applicative[G]): G[Option[B]] =
+        fa.fold(G.unit(None: Option[B]))(v => G.map(f(v))(Option(_)))
+    }
+
+    val treeTraverse: Traverse[Tree] = new Traverse[Tree] {
+      override def traverse[G[_], A, B](fa: Tree[A])(f: A => G[B])(implicit G: Applicative[G]): G[Tree[B]] =
+        Tree
+          .fold[A, G[Tree[B]]](fa)(v => G.map(f(v))(ga => Leaf(ga)), (gl, gr) => G.map2(gl, gr)((l, r) => Branch(l, r)))
+    }
+  }
 }
