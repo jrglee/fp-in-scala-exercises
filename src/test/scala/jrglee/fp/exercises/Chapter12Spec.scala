@@ -1,22 +1,14 @@
 package jrglee.fp.exercises
 
-import jrglee.fp.exercises.Chapter03.{Branch, Leaf, Tree}
+import jrglee.fp.exercises.Chapter03.{Branch, Leaf}
 import jrglee.fp.exercises.Chapter12._
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.prop.{TableDrivenPropertyChecks, TableFor2}
+import org.scalatest.prop.TableDrivenPropertyChecks
 
 class Chapter12Spec extends AnyFreeSpec with Matchers with TableDrivenPropertyChecks {
 
-  private val optionApplicative = new Applicative[Option] {
-    override def apply[A, B](fab: Option[A => B])(fa: Option[A]): Option[B] = fab.flatMap(f => fa.map(f))
-    override def unit[A](a: => A): Option[A] = Option(a)
-  }
-
-  private val listApplicative = new Applicative[List] {
-    override def apply[A, B](fab: List[A => B])(fa: List[A]): List[B] = fab.flatMap(f => fa.map(f))
-    override def unit[A](a: => A): List[A] = List(a)
-  }
+  import Applicative.{listApplicative, optionApplicative}
 
   "12.1" - {
 
@@ -156,6 +148,24 @@ class Chapter12Spec extends AnyFreeSpec with Matchers with TableDrivenPropertyCh
           Branch(Leaf(1), Leaf(2))
         )
         Traverse.treeTraverse.sequence(Branch(Leaf(Option(1)), Leaf(None))) shouldEqual None
+      }
+    }
+  }
+
+  "12.14" - {
+    "traverse" - {
+      "should map list" in {
+        Traverse.listTraverse.map(List(1, 2, 3))(_ * 2) shouldEqual List(2, 4, 6)
+        Traverse.listTraverse.map(List.empty[Int])(_ * 2) shouldEqual List.empty[Int]
+      }
+
+      "should map option" in {
+        Traverse.optionTraverse.map(Option(1))(_ * 2) shouldEqual Option(2)
+        Traverse.optionTraverse.map(None: Option[Int])(_ * 2) shouldEqual None
+      }
+
+      "should map tree" in {
+        Traverse.treeTraverse.map(Branch(Leaf(1), Leaf(2)))(_ * 2) shouldEqual Branch(Leaf(2), Leaf(4))
       }
     }
   }

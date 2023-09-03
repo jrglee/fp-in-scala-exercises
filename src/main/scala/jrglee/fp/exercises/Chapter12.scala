@@ -44,6 +44,25 @@ object Chapter12 {
   }
 
   object Applicative {
+    type Id[A] = A
+
+    val idApplicative = new Applicative[Id] {
+      override def apply[A, B](fab: Id[A => B])(fa: Id[A]): Id[B] = fab(fa)
+      override def unit[A](a: => A): Id[A] = a
+    }
+
+    val optionApplicative = new Applicative[Option] {
+      override def apply[A, B](fab: Option[A => B])(fa: Option[A]): Option[B] = fab.flatMap(f => fa.map(f))
+
+      override def unit[A](a: => A): Option[A] = Option(a)
+    }
+
+    val listApplicative = new Applicative[List] {
+      override def apply[A, B](fab: List[A => B])(fa: List[A]): List[B] = fab.flatMap(f => fa.map(f))
+
+      override def unit[A](a: => A): List[A] = List(a)
+    }
+
     val streamApplicative = new Applicative[LazyList] {
       override def apply[A, B](fab: LazyList[A => B])(fa: LazyList[A]): LazyList[B] =
         fab.zip(fa).map { case (f, a) => f(a) }
@@ -89,9 +108,13 @@ object Chapter12 {
   case class Failure[E](head: E, tail: Vector[E] = Vector.empty) extends Validation[E, Nothing]
   case class Success[A](a: A) extends Validation[Nothing, A]
 
-  trait Traverse[F[_]] {
+  trait Traverse[F[_]] extends Functor[F] {
     def traverse[G[_]: Applicative, A, B](fa: F[A])(f: A => G[B]): G[F[B]]
     def sequence[G[_]: Applicative, A](fga: F[G[A]]): G[F[A]] = traverse(fga)(identity)
+    def map[A, B](fa: F[A])(f: A => B): F[B] = {
+      implicit val G: Applicative[Applicative.Id] = Applicative.idApplicative
+      traverse(fa)(v => G.unit(f(v)))
+    }
   }
 
   object Traverse {
