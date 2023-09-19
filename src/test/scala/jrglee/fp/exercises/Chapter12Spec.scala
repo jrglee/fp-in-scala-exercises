@@ -1,6 +1,7 @@
 package jrglee.fp.exercises
 
 import jrglee.fp.exercises.Chapter03.{Branch, Leaf}
+import jrglee.fp.exercises.Chapter08.{Gen, Prop, SGen}
 import jrglee.fp.exercises.Chapter12._
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
@@ -173,6 +174,26 @@ class Chapter12Spec extends AnyFreeSpec with Matchers with TableDrivenPropertyCh
   "12.15" - {
     "should foldMap with traverse" in {
       Traverse.listTraverse.foldMap(List(1, 2, 3))(_ * 2)(Chapter10.intAddition) shouldBe 12
+    }
+  }
+
+  "12.16" - {
+    "should satisfy laws" in {
+      import Traverse.listTraverse._
+      val lstGen = Gen.choose(0, 10).flatMap(n => Gen.listOfN(n, Gen.boolean))
+      val prop = Chapter08.forAll(lstGen ** lstGen) { case (x, y) =>
+        toList(reverse(x)) ++ toList(reverse(y)) == reverse(toList(y) ++ toList(x))
+      }
+
+      Chapter08.run(prop)
+    }
+  }
+
+  "12.17" - {
+    "should fold a list" in {
+      val l = List(1, 2, 3)
+
+      Traverse.listTraverse.foldLeft(l)(0)(_ + _) shouldBe l.sum
     }
   }
 }

@@ -1,6 +1,7 @@
 package jrglee.fp.exercises
 
 import jrglee.fp.exercises.Chapter03.{Branch, Leaf, Tree}
+import jrglee.fp.exercises.Chapter06.State
 import jrglee.fp.exercises.Chapter10.{Foldable, Monoid}
 import jrglee.fp.exercises.Chapter11.Functor
 
@@ -103,6 +104,16 @@ object Chapter12 {
 
       override def flatMap[A, B](fa: Either[E, A])(f: A => Either[E, B]): Either[E, B] = fa.flatMap(f)
     }
+
+    def stateMonad[S]: Monad[({ type f[x] = State[S, x] })#f] = new Monad[({ type f[x] = State[S, x] })#f] {
+      override def apply[A, B](fab: State[S, A => B])(fa: State[S, A]): State[S, B] = for {
+        f <- fab
+        a <- fa
+      } yield f(a)
+      override def unit[A](a: => A): State[S, A] = State.unit(a)
+
+      override def flatMap[A, B](fa: State[S, A])(f: A => State[S, B]): State[S, B] = fa.flatMap(f)
+    }
   }
 
   sealed trait Validation[+E, +A]
@@ -118,10 +129,31 @@ object Chapter12 {
     }
 
     override def foldRight[A, B](as: F[A])(z: B)(f: (A, B) => B): B = ???
-    override def foldLeft[A, B](as: F[A])(z: B)(f: (B, A) => B): B = ???
+    override def foldLeft[A, B](as: F[A])(z: B)(f: (B, A) => B): B = mapAccum(as, z) { (a, s) =>
+      val b2 = f(s, a)
+      (b2, b2)
+    }._2
+
     override def foldMap[A, B](as: F[A])(f: A => B)(mb: Monoid[B]): B =
       traverse[({ type f[x] = Const[B, x] })#f, A, Nothing](as)(f)(monoidApplicative(mb))
 
+    def traverseS[S, A, B](fa: F[A])(f: A => State[S, B]): State[S, F[B]] =
+      traverse[({ type f[x] = State[S, x] })#f, A, B](fa)(f)(Monad.stateMonad)
+
+    def zipWithIndex[A](fa: F[A]): F[(A, Int)] = mapAccum(fa, 0)((a, s) => ((a, s), s + 1))._1
+
+    override def toList[A](fa: F[A]): List[A] = mapAccum(fa, List[A]())((a, s) => ((), a :: s))._2.reverse
+
+    def mapAccum[S, A, B](fa: F[A], s: S)(f: (A, S) => (B, S)): (F[B], S) =
+      traverseS(fa)((a: A) =>
+        (for {
+          s1 <- State.get[S]
+          (b, s2) = f(a, s1)
+          _ <- State.set(s2)
+        } yield b)
+      ).run(s)
+
+    def reverse[A](fa: F[A]): F[A] = mapAccum(fa, toList(fa).reverse)((a, s) => (s.head, s.tail))._1
   }
 
   object Traverse {
