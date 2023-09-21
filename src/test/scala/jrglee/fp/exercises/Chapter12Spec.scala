@@ -196,4 +196,15 @@ class Chapter12Spec extends AnyFreeSpec with Matchers with TableDrivenPropertyCh
       Traverse.listTraverse.foldLeft(l)(0)(_ + _) shouldBe l.sum
     }
   }
+
+  "12.18" - {
+    "should fuse traversals" in {
+      val (fb, gb) = Traverse.listTraverse.fuse(List(1, 2, 3))(v => Option(v * 2), v => LazyList(v + 1))(
+        Applicative.optionApplicative,
+        Applicative.streamApplicative
+      )
+      fb shouldEqual Option(List(2, 4, 6))
+      gb.toList shouldEqual List(List(2, 3, 4))
+    }
+  }
 }
