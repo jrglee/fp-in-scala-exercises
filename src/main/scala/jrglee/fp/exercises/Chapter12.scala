@@ -154,6 +154,24 @@ object Chapter12 {
       ).run(s)
 
     def reverse[A](fa: F[A]): F[A] = mapAccum(fa, toList(fa).reverse)((a, s) => (s.head, s.tail))._1
+
+    def zip[A, B](fa: F[A], fb: F[B]): F[(A, B)] =
+      mapAccum(fa, toList(fb)) {
+        case (_, Nil)     => sys.error("zip: Incompatible shapes.")
+        case (a, b :: bs) => ((a, b), bs)
+      }._1
+
+    def zipL[A, B](fa: F[A], fb: F[B]): F[(A, Option[B])] =
+      mapAccum(fa, toList(fb)) {
+        case (a, Nil) => ((a, None), Nil)
+        case (a, b :: bs) => ((a, Some(b)), bs)
+      }._1
+
+    def zipR[A, B](fa: F[A], fb: F[B]): F[(Option[A], B)] =
+      mapAccum(fb, toList(fa)) {
+        case (b, Nil) => ((None, b), Nil)
+        case (b, a :: as) => ((Some(a), b), as)
+      }._1
   }
 
   object Traverse {

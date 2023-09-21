@@ -1,7 +1,7 @@
 package jrglee.fp.exercises
 
 import jrglee.fp.exercises.Chapter03.{Branch, Leaf}
-import jrglee.fp.exercises.Chapter08.{Gen, Prop, SGen}
+import jrglee.fp.exercises.Chapter08.Gen
 import jrglee.fp.exercises.Chapter12._
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
@@ -23,7 +23,7 @@ class Chapter12Spec extends AnyFreeSpec with Matchers with TableDrivenPropertyCh
         (List(Option(1), None), None)
       )
 
-      forEvery(table) { (input, expected) => optionApplicative.sequence[Int](input) shouldEqual (expected) }
+      forEvery(table) { (input, expected) => optionApplicative.sequence[Int](input) shouldEqual expected }
     }
 
     "should replicateM" in {
