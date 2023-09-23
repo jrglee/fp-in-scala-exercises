@@ -9,7 +9,7 @@ object Chapter12 {
 
   trait Applicative[F[_]] extends Functor[F] { self =>
     // primitive combinators
-    def apply[A, B](fab: F[A => B])(fa: F[A]): F[B]
+    def apply[A, B](fab: F[A => B])(fa: F[A]): F[B] = map2(fab, fa)((f, a) => f(a))
     def unit[A](a: => A): F[A]
 
     // derived combinators
@@ -19,8 +19,6 @@ object Chapter12 {
       apply(apply(map(fa)(f.curried))(fb))(fc)
     def map4[A, B, C, D, E](fa: F[A], fb: F[B], fc: F[C], fd: F[D])(f: (A, B, C, D) => E): F[E] =
       apply(apply(apply(map(fa)(f.curried))(fb))(fc))(fd)
-
-    def applyFromUnitAndMap2[A, B](fab: F[A => B])(fa: F[A]): F[B] = map2(fab, fa)((f, a) => f(a))
 
     def traverse[A, B](as: List[A])(f: A => F[B]): F[List[B]] =
       as.foldRight(unit(List.empty[B]))((a, fbs) => map2(f(a), fbs)(_ :: _))
@@ -95,24 +93,31 @@ object Chapter12 {
   }
   object Monad {
     def eitherMonad[E]: Monad[({ type f[x] = Either[E, x] })#f] = new Monad[({ type f[x] = Either[E, x] })#f] {
-      override def apply[A, B](fab: Either[E, A => B])(fa: Either[E, A]): Either[E, B] = for {
-        f <- fab
-        a <- fa
-      } yield f(a)
-
       override def unit[A](a: => A): Either[E, A] = Right(a)
-
       override def flatMap[A, B](fa: Either[E, A])(f: A => Either[E, B]): Either[E, B] = fa.flatMap(f)
     }
 
     def stateMonad[S]: Monad[({ type f[x] = State[S, x] })#f] = new Monad[({ type f[x] = State[S, x] })#f] {
-      override def apply[A, B](fab: State[S, A => B])(fa: State[S, A]): State[S, B] = for {
-        f <- fab
-        a <- fa
-      } yield f(a)
       override def unit[A](a: => A): State[S, A] = State.unit(a)
-
       override def flatMap[A, B](fa: State[S, A])(f: A => State[S, B]): State[S, B] = fa.flatMap(f)
+    }
+
+    val listMonad: Monad[List] = new Monad[List] {
+      override def unit[A](a: => A): List[A] = List(a)
+      override def flatMap[A, B](fa: List[A])(f: A => List[B]): List[B] = fa.flatMap(f)
+    }
+
+    val optionMonad: Monad[Option] = new Monad[Option] {
+      override def unit[A](a: => A): Option[A] = Option(a)
+      override def flatMap[A, B](fa: Option[A])(f: A => Option[B]): Option[B] = fa.flatMap(f)
+    }
+
+    def composeM[F[_], G[_]](implicit F: Monad[F], G: Monad[G], T: Traverse[G]): Monad[({ type f[x] = F[G[x]] })#f] = {
+      new Monad[({ type f[x] = F[G[x]] })#f] {
+        override def unit[A](a: => A): F[G[A]] = F.unit(G.unit(a))
+        override def flatMap[A, B](fa: F[G[A]])(f: A => F[G[B]]): F[G[B]] =
+          F.flatMap(fa)(ga => F.map(T.traverse(ga)(f))(G.join))
+      }
     }
   }
 
@@ -185,7 +190,6 @@ object Chapter12 {
           self.traverse(fa)(a => G.traverse(a)(f))
       }
     }
-
   }
 
   object Traverse {

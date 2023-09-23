@@ -60,7 +60,7 @@ class Chapter12Spec extends AnyFreeSpec with Matchers with TableDrivenPropertyCh
       )
 
       forEvery(table) { (f, a) =>
-        optionApplicative.apply(f)(a) shouldEqual optionApplicative.applyFromUnitAndMap2(f)(a)
+        optionApplicative.apply(f)(a) shouldEqual optionApplicative.apply(f)(a)
       }
     }
   }
@@ -215,6 +215,13 @@ class Chapter12Spec extends AnyFreeSpec with Matchers with TableDrivenPropertyCh
         .traverse(List(Option(1), Option(2)))(a => Option(a * 2))(Applicative.optionApplicative)
 
       res shouldEqual Option(List(Option(2), Option(4)))
+    }
+  }
+
+  "12.20" - {
+    "should compose monads" in {
+      val M = Monad.composeM(Monad.listMonad, Monad.optionMonad, Traverse.optionTraverse)
+      M.map(List(Option(1), Option(2)))(a => a * 2) shouldEqual List(Option(2), Option(4))
     }
   }
 }
