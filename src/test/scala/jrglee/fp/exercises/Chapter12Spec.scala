@@ -207,4 +207,14 @@ class Chapter12Spec extends AnyFreeSpec with Matchers with TableDrivenPropertyCh
       gb.toList shouldEqual List(List(2, 3, 4))
     }
   }
+
+  "12.19" - {
+    "should do nested traversal" in {
+      val res = Traverse.listTraverse
+        .compose(Traverse.optionTraverse)
+        .traverse(List(Option(1), Option(2)))(a => Option(a * 2))(Applicative.optionApplicative)
+
+      res shouldEqual Option(List(Option(2), Option(4)))
+    }
+  }
 }

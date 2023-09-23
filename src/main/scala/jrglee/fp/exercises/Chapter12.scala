@@ -178,6 +178,14 @@ object Chapter12 {
     )(f: A => G[B], g: A => H[B])(G: Applicative[G], H: Applicative[H]): (G[F[B]], H[F[B]]) =
       traverse[({ type f[x] = (G[x], H[x]) })#f, A, B](fa)(a => (f(a), g(a)))(G.product(H))
 
+    def compose[G[_]](implicit G: Traverse[G]): Traverse[({ type f[x] = F[G[x]] })#f] = {
+      val self = this
+      new Traverse[({ type f[x] = F[G[x]] })#f] {
+        override def traverse[H[_]: Applicative, A, B](fa: F[G[A]])(f: A => H[B]): H[F[G[B]]] =
+          self.traverse(fa)(a => G.traverse(a)(f))
+      }
+    }
+
   }
 
   object Traverse {
