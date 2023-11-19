@@ -157,6 +157,8 @@ object Chapter07 {
 
       def fork[A](a: => Par[A]): Par[A] = es => (cb: A => Unit) => eval(es)(a(es)(cb))
 
+      def lazyUnit[A](a: => A): Par[A] = fork(unit(a))
+
       def eval(es: ExecutorService)(r: => Unit): Unit = es.submit(new Callable[Unit] {
         override def call(): Unit = r
       })

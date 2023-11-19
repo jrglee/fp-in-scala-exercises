@@ -5,6 +5,9 @@ import jrglee.fp.exercises.Chapter13._
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
 
+import java.io.ByteArrayOutputStream
+import java.nio.charset.StandardCharsets
+
 class Chapter13Spec extends AnyFreeSpec with Matchers {
 
   "13.1" - {
@@ -26,7 +29,7 @@ class Chapter13Spec extends AnyFreeSpec with Matchers {
     }
   }
 
-  "13.2" - {
+  "13.3" - {
     "should run with a monad" in {
       implicit val m: Monad[Option] = Monad.optionMonad
 
@@ -37,4 +40,15 @@ class Chapter13Spec extends AnyFreeSpec with Matchers {
     }
   }
 
+  "13.4" - {
+    "should run free console" in {
+      val stream = new ByteArrayOutputStream()
+
+      scala.Console.withOut(stream) {
+        runConsole(Suspend(PrintLine("hello world")))
+      }
+
+      new String(stream.toByteArray, StandardCharsets.UTF_8) shouldBe "hello world\n"
+    }
+  }
 }
