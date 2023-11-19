@@ -110,8 +110,9 @@ object Chapter13 {
     runFree[Console, Par, A](a)(consoleToPar)
 
   def translate[F[_], G[_], A](f: Free[F, A])(fg: F ~> G): Free[G, A] = {
-    val ffG = new (F ~> ({ type f[a] = Free[G, a] })#f) {
-      override def apply[B](fb: F[B]): Free[G, B] = Suspend(fg(fb))
+    type FreeG[B] = Free[G, B]
+    val ffG = new (F ~> FreeG) {
+      override def apply[B](fb: F[B]): FreeG[B] = Suspend(fg(fb))
     }
 
     runFree(f)(ffG)(freeMonad[G])
