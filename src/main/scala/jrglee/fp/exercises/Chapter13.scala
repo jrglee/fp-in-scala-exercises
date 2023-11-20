@@ -2,7 +2,10 @@ package jrglee.fp.exercises
 
 import jrglee.fp.exercises.Chapter07.Section5.Par
 import jrglee.fp.exercises.Chapter12.Monad
+import jrglee.fp.exercises.Chapter13.Console.ConsoleIO
 
+import java.nio.ByteBuffer
+import java.nio.channels.{AsynchronousFileChannel, CompletionHandler}
 import scala.annotation.tailrec
 import scala.io.StdIn.readLine
 
@@ -55,6 +58,7 @@ object Chapter13 {
   sealed trait Console[A] {
     def toPar: Par[A]
     def toThunk: () => A
+    def toReader: ConsoleReader[A]
   }
 
   object Console {
@@ -67,6 +71,7 @@ object Chapter13 {
   case object ReadLine extends Console[Option[String]] {
     override def toPar: Par[Option[String]] = Par.lazyUnit(run)
     override def toThunk: () => Option[String] = () => run
+    override def toReader: ConsoleReader[Option[String]] = ConsoleReader(a => Some(a))
 
     def run: Option[String] =
       try Some(readLine())
@@ -76,6 +81,7 @@ object Chapter13 {
   case class PrintLine(line: String) extends Console[Unit] {
     override def toPar: Par[Unit] = Par.lazyUnit(println(line))
     override def toThunk: () => Unit = () => println(line)
+    override def toReader: ConsoleReader[Unit] = ConsoleReader(_ => ())
   }
 
   trait Translate[F[_], G[_]] { def apply[A](f: F[A]): G[A] }
@@ -119,4 +125,36 @@ object Chapter13 {
   }
 
   def runConsole[A](a: Free[Console, A]): A = runTrampoline(translate(a)(consoleToFunction0))
+
+  case class ConsoleReader[A](run: String => A) {
+    def map[B](f: A => B): ConsoleReader[B] = ConsoleReader(r => f(run(r)))
+    def flatMap[B](f: A => ConsoleReader[B]): ConsoleReader[B] = ConsoleReader(r => f(run(r)).run(r))
+  }
+
+  object ConsoleReader {
+    implicit val monad: Monad[ConsoleReader] = new Monad[ConsoleReader] {
+      override def unit[A](a: => A): ConsoleReader[A] = ConsoleReader(_ => a)
+      override def flatMap[A, B](fa: ConsoleReader[A])(f: A => ConsoleReader[B]): ConsoleReader[B] = fa.flatMap(f)
+    }
+  }
+
+  val consoleToReader = new (Console ~> ConsoleReader) {
+    override def apply[A](f: Console[A]): ConsoleReader[A] = f.toReader
+  }
+
+  def runConsoleReader[A](io: ConsoleIO[A]): ConsoleReader[A] = runFree[Console, ConsoleReader, A](io)(consoleToReader)
+
+  def read(file: AsynchronousFileChannel, fromPosition: Long, numBytes: Int): Par[Either[Throwable, Array[Byte]]] =
+    Par.async { cb =>
+      val buffer = ByteBuffer.allocate(numBytes)
+      file.read(
+        buffer,
+        fromPosition,
+        0,
+        new CompletionHandler[java.lang.Integer, Int] {
+          override def completed(result: java.lang.Integer, attachment: Int): Unit = cb(Right(buffer.array()))
+          override def failed(exc: Throwable, attachment: Int): Unit = cb(Left(exc))
+        }
+      )
+    }
 }

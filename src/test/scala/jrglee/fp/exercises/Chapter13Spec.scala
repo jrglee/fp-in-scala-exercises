@@ -1,14 +1,19 @@
 package jrglee.fp.exercises
 
+import jrglee.fp.exercises.Chapter07.Section5.Par
 import jrglee.fp.exercises.Chapter12.Monad
 import jrglee.fp.exercises.Chapter13._
+import org.scalatest.Inside
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.io.ByteArrayOutputStream
+import java.nio.channels.AsynchronousFileChannel
 import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.util.concurrent.ForkJoinPool
 
-class Chapter13Spec extends AnyFreeSpec with Matchers {
+class Chapter13Spec extends AnyFreeSpec with Matchers with Inside {
 
   "13.1" - {
     "should create a monad" in {
@@ -49,6 +54,21 @@ class Chapter13Spec extends AnyFreeSpec with Matchers {
       }
 
       new String(stream.toByteArray, StandardCharsets.UTF_8) shouldBe "hello world\n"
+    }
+  }
+
+  "13.5" - {
+    "should read file async" in {
+      val temp = Files.createTempDirectory("unit-test")
+      val targetFile = temp.resolve("file.txt")
+
+      Files.write(targetFile, "hello world\n".getBytes(StandardCharsets.UTF_8))
+
+      inside(Par.run(ForkJoinPool.commonPool())(read(AsynchronousFileChannel.open(targetFile), 0, 5))) {
+        case Right(bytes) =>
+          new String(bytes, StandardCharsets.UTF_8) shouldBe "hello"
+      }
+
     }
   }
 }
