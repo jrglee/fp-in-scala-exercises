@@ -1,6 +1,7 @@
 package jrglee.fp.exercises
 
 import jrglee.fp.exercises.Chapter05.{Cons, Empty, Stream}
+import jrglee.fp.exercises.Chapter12.Monad
 
 object Chapter15 {
 
@@ -29,6 +30,54 @@ object Chapter15 {
       }
       go(this)
     }
+
+    def |>[O2](p2: Process[O, O2]): Process[I, O2] = p2 match {
+      case Halt()           => Halt()
+      case Emit(head, tail) => Emit(head, this |> tail)
+      case aw @ Await(recv) =>
+        this match {
+          case Halt()           => Halt() |> recv(None)
+          case Emit(head, tail) => tail |> recv(Some(head))
+          case Await(recv2)     => Await(i => recv2(i) |> aw)
+        }
+    }
+
+    def map[O2](f: O => O2): Process[I, O2] = this |> lift(f)
+
+    def ++(p: => Process[I, O]): Process[I, O] = this match {
+      case Halt()           => p
+      case Emit(head, tail) => Emit(head, tail ++ p)
+      case Await(recv)      => Await(recv andThen (_ ++ p))
+    }
+
+    def flatMap[O2](f: O => Process[I, O2]): Process[I, O2] = this match {
+      case Halt()           => Halt()
+      case Emit(head, tail) => f(head) ++ tail.flatMap(f)
+      case Await(recv)      => Await(recv andThen (_ flatMap f))
+    }
+
+    def zipWithIndex: Process[I, (O, Int)] = {
+      def go(p: Process[I, O], n: Int): Process[I, (O, Int)] = p match {
+        case Halt()           => Halt()
+        case Emit(head, tail) => Emit((head, n), go(tail, n))
+        case Await(recv)      => Await(i => go(recv(i), n + 1))
+      }
+      go(this, 0)
+    }
+
+    def zip[O2](p2: Process[I, O2]): Process[I, (O, O2)] = (this, p2) match {
+      case (Halt(), _)                              => Halt()
+      case (_, Halt())                              => Halt()
+      case (Emit(lHead, lTail), Emit(rHead, rTail)) => Emit((lHead, rHead), lTail.zip(rTail))
+      case (l, r)                                   => Await(i => l.feed(i).zip(r.feed(i)))
+    }
+
+    def feed(i: Option[I]): Process[I, O] = this match {
+      case Halt()           => Halt()
+      case Emit(head, tail) => Emit(head, tail.feed(i))
+      case Await(recv)      => recv(i)
+    }
+
   }
 
   object Process {
@@ -114,6 +163,20 @@ object Chapter15 {
       val sum2 = sum + i
       val count2 = count + 1
       (sum2 / count2, (sum2, count2))
+    }
+
+    def monad[I]: Monad[({ type f[x] = Process[I, x] })#f] = new Monad[({ type f[x] = Process[I, x] })#f] {
+      override def unit[O](o: => O): Process[I, O] = Emit(o)
+
+      override def flatMap[O, O2](p: Process[I, O])(f: O => Process[I, O2]): Process[I, O2] = p flatMap f
+    }
+
+    def mean3: Process[Double, Double] = sum.zip(count).map { case (s, c) => s / c }
+
+    def exists[I](f: I => Boolean): Process[I, Boolean] = Await {
+      case Some(i) if f(i) => Emit(true, Halt())
+      case Some(i)         => Emit(false, exists(f))
+      case None            => Halt()
     }
   }
 }

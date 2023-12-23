@@ -54,4 +54,40 @@ class Chapter15Spec extends AnyFreeSpec with Matchers {
       Process.mean2(Stream(2, 4, 6)).toList shouldEqual List(2d, 3d, 4d)
     }
   }
+
+  "15.5" - {
+    "should chain processes" in {
+      (Process.take(2) |> Process.sum)(Stream(1, 2, 3, 4)).toList shouldEqual List(1d, 3d)
+    }
+  }
+
+  "15.6" - {
+    "should zip with index" in {
+      Process.lift[String, String](identity).zipWithIndex(Stream("a", "b", "c")).toList shouldEqual List(
+        "a" -> 1,
+        "b" -> 2,
+        "c" -> 3
+      )
+    }
+  }
+
+  "15.7" - {
+    "should generically combine with zip" in {
+      Process.lift[String, String](identity).zip(Process.count2)(Stream("a", "b", "c")).toList shouldEqual List(
+        "a" -> 1,
+        "b" -> 2,
+        "c" -> 3
+      )
+    }
+
+    "should calculate mean with zip" in {
+      Process.mean3(Stream(2, 4, 6)).toList shouldEqual List(2d, 3d, 4d)
+    }
+  }
+
+  "15.8" - {
+    "should run predicate" in {
+      Process.exists[Int](_ == 5)(Stream(1, 2, 3, 4, 5, 6)).toList shouldEqual List(false, false, false, false, true)
+    }
+  }
 }
