@@ -90,4 +90,14 @@ class Chapter15Spec extends AnyFreeSpec with Matchers {
       Process.exists[Int](_ == 5)(Stream(1, 2, 3, 4, 5, 6)).toList shouldEqual List(false, false, false, false, true)
     }
   }
+
+  "15.9" - {
+    "should convert entries from fahrenheit to celsius" in {
+      Chapter15.fahrenheitToCelsius(Stream("32", "# nope", "212", "", "-40")).toList shouldEqual List(
+        "0.0",
+        "100.0",
+        "-40.0"
+      )
+    }
+  }
 }

@@ -2,6 +2,9 @@ package jrglee.fp.exercises
 
 import jrglee.fp.exercises.Chapter05.{Cons, Empty, Stream}
 import jrglee.fp.exercises.Chapter12.Monad
+import jrglee.fp.exercises.Chapter13.IO
+
+import scala.annotation.tailrec
 
 object Chapter15 {
 
@@ -175,8 +178,32 @@ object Chapter15 {
 
     def exists[I](f: I => Boolean): Process[I, Boolean] = Await {
       case Some(i) if f(i) => Emit(true, Halt())
-      case Some(i)         => Emit(false, exists(f))
+      case Some(_)         => Emit(false, exists(f))
       case None            => Halt()
     }
   }
+
+  def processFile[A, B](f: java.io.File, p: Process[String, A], z: B)(g: (B, A) => B): IO[B] = IO {
+    @tailrec
+    def go(ss: Iterator[String], cur: Process[String, A], acc: B): B = cur match {
+      case Process.Halt() => acc
+      case Process.Await(recv) =>
+        val next = if (ss.hasNext) recv(Some(ss.next)) else recv(None)
+        go(ss, next, acc)
+      case Process.Emit(h, t) => go(ss, t, g(acc, h))
+    }
+
+    val s = io.Source.fromFile(f)
+    try go(s.getLines, p, z)
+    finally s.close
+  }
+
+  def toCelsius(fahrenheit: Double): Double = (5.0 / 9.0) * (fahrenheit - 32.0)
+
+  def fahrenheitToCelsius: Process[String, String] =
+    (Process.filter[String](v => !v.startsWith("#")) |> Process.filter[String](_.nonEmpty))
+      .flatMap[Double](v => v.toDoubleOption.fold(Process.Halt[String, Double]().repeat)(d => Process.Emit(d)))
+      .map(toCelsius)
+      .map(_.toString)
+
 }

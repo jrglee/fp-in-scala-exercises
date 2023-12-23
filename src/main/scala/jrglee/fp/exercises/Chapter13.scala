@@ -157,4 +157,9 @@ object Chapter13 {
         }
       )
     }
+
+  type IO[A] = Free[Function0, A]
+  object IO {
+    def apply[A](f: => A): IO[A] = Suspend(() => f)
+  }
 }
