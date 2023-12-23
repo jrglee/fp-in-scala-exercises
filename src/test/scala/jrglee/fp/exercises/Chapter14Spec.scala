@@ -4,8 +4,11 @@ import jrglee.fp.exercises.Chapter14._
 import org.scalatest.Inside
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.prop.{TableDrivenPropertyChecks, TableFor2}
 
-class Chapter14Spec extends AnyFreeSpec with Matchers with Inside {
+import scala.collection.mutable
+
+class Chapter14Spec extends AnyFreeSpec with Matchers with Inside with TableDrivenPropertyChecks {
 
   "14.1" - {
     "should not change on empty" in {
@@ -63,6 +66,54 @@ class Chapter14Spec extends AnyFreeSpec with Matchers with Inside {
 
       val res = ST.runST(p)
       res shouldEqual List(1, 2, 3, 4, 5)
+    }
+  }
+
+  "14.3" - {
+    "should create empty" in {
+      ST.runST(new RunnableST[(Map[Int, Int], Int)] {
+        override def apply[S]: ST[S, (Map[Int, Int], Int)] = for {
+          m <- STMap.empty[S, Int, Int]
+          size <- m.size
+          res <- m.freeze
+        } yield (res, size)
+      }) shouldEqual (Map.empty, 0)
+    }
+
+    "should create from iterable" in {
+      ST.runST(new RunnableST[(Map[Int, Int], Int, Option[Int])] {
+        override def apply[S]: ST[S, (Map[Int, Int], Int, Option[Int])] = for {
+          m <- STMap(1 -> 2)
+          size <- m.size
+          res <- m.freeze
+          singleVal <- m.get(1)
+        } yield (res, size, singleVal)
+      }) shouldEqual (Map(1 -> 2), 1, Some(2))
+    }
+
+    "should create from map" in {
+      ST.runST(new RunnableST[(Map[Int, Int], Int, Option[Int])] {
+        override def apply[S]: ST[S, (Map[Int, Int], Int, Option[Int])] = for {
+          m <- STMap.fromMap(Map(2 -> 3))
+          size <- m.size
+          res <- m.freeze
+          singleVal <- m.get(2)
+        } yield (res, size, singleVal)
+      }) shouldEqual (Map(2 -> 3), 1, Some(3))
+    }
+
+    "should append and remove" in {
+      ST.runST(new RunnableST[(Map[Int, Int], Int)] {
+        override def apply[S]: ST[S, (Map[Int, Int], Int)] = for {
+          m <- STMap(1 -> 2)
+          _ <- m += (2 -> 3)
+          _ <- m ++= Map(3 -> 4, 4 -> 5, 5 -> 6)
+          _ <- m -= 1
+          _ <- m --= List(4, 5)
+          res <- m.freeze
+          size <- m.size
+        } yield (res, size)
+      }) shouldEqual (Map(2 -> 3, 3 -> 4), 2)
     }
   }
 

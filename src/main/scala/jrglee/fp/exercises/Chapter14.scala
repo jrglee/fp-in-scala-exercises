@@ -1,4 +1,5 @@
 package jrglee.fp.exercises
+import scala.collection.mutable
 
 object Chapter14 {
 
@@ -88,8 +89,8 @@ object Chapter14 {
     def fromList[S, A: Manifest](xs: List[A]): ST[S, STArray[S, A]] = ST(new STArray[S, A] {
       override lazy val value: Array[A] = xs.toArray
     })
-
   }
+
   def partition[S](arr: STArray[S, Int], n: Int, r: Int, pivot: Int): ST[S, Int] = for {
     pivotVal <- arr.read(pivot)
     _ <- arr.swap(pivot, r)
@@ -126,5 +127,30 @@ object Chapter14 {
           sorted <- arr.freeze
         } yield sorted
       })
+
+  sealed abstract class STMap[S, K, V] {
+    protected def value: mutable.HashMap[K, V]
+
+    def size: ST[S, Int] = ST(value.size)
+    def get(k: K): ST[S, Option[V]] = ST(value.get(k))
+    def +=(kv: (K, V)): ST[S, Unit] = ST(value += kv)
+    def ++=(kvs: Iterable[(K, V)]): ST[S, Unit] = ST(value ++= kvs)
+    def -=(k: K): ST[S, Unit] = ST(value -= k)
+    def --=(ks: Iterable[K]): ST[S, Unit] = ST(value --= ks)
+
+    def freeze: ST[S, Map[K, V]] = ST(Map.from(value))
+  }
+
+  object STMap {
+    def apply[S, K, V](kvs: (K, V)*): ST[S, STMap[S, K, V]] = from(kvs)
+
+    def empty[S, K, V]: ST[S, STMap[S, K, V]] = apply()
+
+    def from[S, K, V](it: IterableOnce[(K, V)]): ST[S, STMap[S, K, V]] = ST(new STMap[S, K, V] {
+      override protected val value: mutable.HashMap[K, V] = mutable.HashMap.from(it)
+    })
+
+    def fromMap[S, K, V](map: Map[K, V]): ST[S, STMap[S, K, V]] = from(map)
+  }
 
 }
