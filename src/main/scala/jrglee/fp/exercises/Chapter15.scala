@@ -83,5 +83,37 @@ object Chapter15 {
         else Emit(i, lift(identity))
       case _ => Halt()
     }
+
+    def count[I]: Process[I, Int] = {
+      def go(n: Int): Process[I, Int] = Await {
+        case Some(_) => Emit(n + 1, go(n + 1))
+        case None    => Halt()
+      }
+      go(0)
+    }
+
+    def mean: Process[Double, Double] = {
+      def go(sum: Double, count: Int): Process[Double, Double] = Await {
+        case Some(i) =>
+          val sum2 = sum + i
+          val count2 = count + 1
+          Emit(sum2 / count2, go(sum2, count2))
+        case None => Halt()
+      }
+      go(0, 0)
+    }
+
+    def loop[S, I, O](z: S)(f: (I, S) => (O, S)): Process[I, O] = Await {
+      case Some(i) => f(i, z) match { case (o, s2) => Emit(o, loop(s2)(f)) }
+      case None    => Halt()
+    }
+
+    def count2[I]: Process[I, Int] = loop(0) { case (_, s) => (s + 1, s + 1) }
+
+    def mean2: Process[Double, Double] = loop((0d, 0)) { case (i, (sum, count)) =>
+      val sum2 = sum + i
+      val count2 = count + 1
+      (sum2 / count2, (sum2, count2))
+    }
   }
 }

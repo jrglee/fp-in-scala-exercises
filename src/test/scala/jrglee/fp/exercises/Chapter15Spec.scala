@@ -32,4 +32,26 @@ class Chapter15Spec extends AnyFreeSpec with Matchers {
       Process.dropWhile[Int](_ < 5)(Stream(1, 2, 3, 4, 5, 6)).toList shouldEqual List(5, 6)
     }
   }
+
+  "15.2" - {
+    "should count elements" in {
+      Process.count(Stream("a", "b", "c")).toList shouldEqual List(1, 2, 3)
+    }
+  }
+
+  "15.3" - {
+    "should emit running average" in {
+      Process.mean(Stream(2, 4, 6)).toList shouldEqual List(2d, 3d, 4d)
+    }
+  }
+
+  "15.4" - {
+    "should count elements" in {
+      Process.count2(Stream("a", "b", "c")).toList shouldEqual List(1, 2, 3)
+    }
+
+    "should emit running average" in {
+      Process.mean2(Stream(2, 4, 6)).toList shouldEqual List(2d, 3d, 4d)
+    }
+  }
 }
