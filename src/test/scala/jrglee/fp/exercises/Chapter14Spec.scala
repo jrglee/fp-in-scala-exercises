@@ -4,9 +4,7 @@ import jrglee.fp.exercises.Chapter14._
 import org.scalatest.Inside
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.prop.{TableDrivenPropertyChecks, TableFor2}
-
-import scala.collection.mutable
+import org.scalatest.prop.TableDrivenPropertyChecks
 
 class Chapter14Spec extends AnyFreeSpec with Matchers with Inside with TableDrivenPropertyChecks {
 
