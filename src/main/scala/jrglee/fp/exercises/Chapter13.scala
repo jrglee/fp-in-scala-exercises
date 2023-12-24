@@ -6,6 +6,7 @@ import jrglee.fp.exercises.Chapter13.Console.ConsoleIO
 
 import java.nio.ByteBuffer
 import java.nio.channels.{AsynchronousFileChannel, CompletionHandler}
+import java.util.concurrent.ExecutorService
 import scala.annotation.tailrec
 import scala.io.StdIn.readLine
 
@@ -158,8 +159,11 @@ object Chapter13 {
       )
     }
 
-  type IO[A] = Free[Function0, A]
+  type IO[A] = Free[Par, A]
   object IO {
-    def apply[A](f: => A): IO[A] = Suspend(() => f)
+    def apply[A](f: => A): IO[A] = Suspend(Par.fork(Par.unit(f)))
+
+    def unsafePerformIO[A](io: IO[A])(implicit E: ExecutorService): A =
+      Par.run(E) { run(io)(parMonad) }
   }
 }
