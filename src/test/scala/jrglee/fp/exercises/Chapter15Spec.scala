@@ -1,10 +1,12 @@
 package jrglee.fp.exercises
 
 import jrglee.fp.exercises.Chapter05.Stream
+import jrglee.fp.exercises.Chapter13.IO
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.util.concurrent.ForkJoinPool
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 
 class Chapter15Spec extends AnyFreeSpec with Matchers {
 
@@ -109,12 +111,42 @@ class Chapter15Spec extends AnyFreeSpec with Matchers {
         val task = Task.unit(10).flatMap(v => Task.unit(v + 2))
 
         val p: Process[Task, Int] = Process.await(task) {
-          case Right(value) => Process.Emit(value, Process.Halt(Process.End))
+          case Right(value) => Process.emit(value)
           case Left(e)      => Process.Halt(e)
         }
 
         val log = p.runLog.run(ForkJoinPool.commonPool())
         log shouldEqual List(12)
+      }
+    }
+
+    "15.11" - {
+      "should eval value" in {
+        val log = Process.eval(Task.unit(10)).runLog.run(ForkJoinPool.commonPool())
+        log shouldEqual List(10)
+      }
+
+      "should eval_ and discard" in {
+        val called = new AtomicBoolean(false)
+        val task: Task[Unit] = Task(IO(Right(called.set(true))))
+        val log = Process.eval(task).runLog.run(ForkJoinPool.commonPool())
+
+        log should have size 1
+        called.get() shouldBe true
+      }
+    }
+
+    "15.12" - {
+      "should join" in {
+        val value = new AtomicInteger(0)
+        val sink: Process.Sink[Task, Int] =
+          Process.eval(Task(IO(Right(v => Process.eval(Task(IO(Right(value.set(v)))))))))
+        val p = Process.join(Process.eval(Task.unit(10)).zipWith(sink)((o, f) => f(o)))
+
+        val log = p.runLog.run(ForkJoinPool.commonPool())
+        log should have size 1
+
+        value.get() shouldBe 10
       }
     }
   }

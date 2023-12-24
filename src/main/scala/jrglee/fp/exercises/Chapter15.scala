@@ -4,6 +4,7 @@ import jrglee.fp.exercises.Chapter05.{Cons, Empty, Stream}
 import jrglee.fp.exercises.Chapter12.Monad
 import jrglee.fp.exercises.Chapter13.IO
 
+import java.io.FileWriter
 import java.util.concurrent.ExecutorService
 import scala.annotation.tailrec
 
@@ -252,6 +253,83 @@ object Chapter15 {
 
         go(this, IndexedSeq())
       }
+
+      def onComplete(p: => Process[F, O]): Process[F, O] = this.onHalt {
+        case End => p.asFinalizer
+        case err => p.asFinalizer ++ Halt(err)
+      }
+
+      def asFinalizer: Process[F, O] = this match {
+        case Emit(h, t) => Emit(h, t.asFinalizer)
+        case Halt(e)    => Halt(e)
+        case Await(req, recv) =>
+          await(req) {
+            case Left(Kill) => this.asFinalizer
+            case x          => recv(x)
+          }
+      }
+
+      def repeat: Process[F, O] = this ++ this.repeat
+
+      def |>[O2](p2: Process1[O, O2]): Process[F, O2] = {
+        p2 match {
+          case Halt(e)    => this.kill onHalt { e2 => Halt(e) ++ Halt(e2) }
+          case Emit(h, t) => Emit(h, this |> t)
+          case Await(req, recv) =>
+            this match {
+              case Halt(err)          => Halt(err) |> recv(Left(err))
+              case Emit(h, t)         => t |> Try(recv(Right(h)))
+              case Await(req0, recv0) => await(req0)(recv0 andThen (_ |> p2))
+            }
+        }
+      }
+
+      def pipe[O2](p2: Process1[O, O2]): Process[F, O2] = this |> p2
+
+      @tailrec
+      final def kill[O2]: Process[F, O2] = this match {
+        case Await(req, recv) =>
+          recv(Left(Kill)).drain.onHalt {
+            case Kill => Halt(End)
+            case e    => Halt(e)
+          }
+        case Halt(e)    => Halt(e)
+        case Emit(h, t) => t.kill
+      }
+
+      def drain[O2]: Process[F, O2] = this match {
+        case Halt(e)          => Halt(e)
+        case Emit(h, t)       => t.drain
+        case Await(req, recv) => Await(req, recv andThen (_.drain))
+      }
+
+      def filter(f: O => Boolean): Process[F, O] = this |> Process.filter(f)
+
+      def tee[O2, O3](p2: Process[F, O2])(t: Tee[O, O2, O3]): Process[F, O3] = t match {
+        case Halt(e)    => this.kill.onComplete(p2.kill).onComplete(Halt(e))
+        case Emit(h, t) => Emit(h, (this tee p2)(t))
+        case Await(side, recv) =>
+          side.get match {
+            case Left(isO) =>
+              this match {
+                case Halt(e)            => p2.kill.onComplete(Halt(e))
+                case Emit(o, ot)        => (ot tee p2)(Try(recv(Right(o))))
+                case Await(reqL, recvL) => await(reqL)(recvL andThen (this2 => this2.tee(p2)(t)))
+              }
+
+            case Right(isO2) =>
+              p2 match {
+                case Halt(e)            => this.kill.onComplete(Halt(e))
+                case Emit(o2, ot)       => (this tee ot)(Try(recv(Right(o2))))
+                case Await(reqR, recvR) => await(reqR)(recvR andThen (p3 => this.tee(p3)(t)))
+              }
+          }
+      }
+
+      def zipWith[O2, O3](p2: Process[F, O2])(f: (O, O2) => O3): Process[F, O3] =
+        (this tee p2)(Process.zipWith(f))
+
+      def to[O2](sink: Sink[F, O]): Process[F, Unit] = join { this.zipWith(sink)((o, f) => f(o)) }
     }
 
     object Process {
@@ -267,6 +345,8 @@ object Chapter15 {
         catch { case e: Throwable => Halt(e) }
 
       def await[F[_], A, O](req: F[A])(recv: Either[Throwable, A] => Process[F, O]): Process[F, O] = Await(req, recv)
+      def emit[F[_], O](head: O, tail: Process[F, O] = Halt[F, O](End)): Process[F, O] = Emit[F, O](head, tail)
+      def halt[F[_], O](err: Throwable): Process[F, O] = Halt[F, O](err)
 
       def runLog[O](src: Process[IO, O]): IO[IndexedSeq[O]] = IO {
         val E = java.util.concurrent.Executors.newFixedThreadPool(4)
@@ -286,6 +366,92 @@ object Chapter15 {
         try go(src, IndexedSeq())
         finally E.shutdown()
       }
+
+      def resource[R, O](acquire: IO[R])(use: R => Process[IO, O])(release: R => Process[IO, O]): Process[IO, O] =
+        eval(acquire).flatMap(r => use(r).onComplete(release(r)))
+
+      def eval[F[_], A](a: F[A]): Process[F, A] = await(a) {
+        case Right(value) => emit[F, A](value)
+        case Left(err)    => halt(err)
+      }
+
+      def eval_[F[_], A, B](a: F[A]): Process[F, B] = await(a) {
+        case Right(value) => halt(End)
+        case Left(err)    => halt(err)
+      }
+
+      case class Is[I]() {
+        sealed trait f[X]
+        val Get = new f[I] {}
+      }
+
+      def Get[I]: Is[I]#f[I] = Is[I]().Get
+
+      type Process1[I, O] = Process[Is[I]#f, O]
+
+      def await1[I, O](recv: I => Process1[I, O], fallback: Process1[I, O] = halt1[I, O]): Process1[I, O] =
+        Await(
+          Get[I],
+          (e: Either[Throwable, I]) =>
+            e match {
+              case Left(End)    => fallback
+              case Left(err)    => Halt(err)
+              case Right(value) => Try(recv(value))
+            }
+        )
+
+      def emit1[I, O](h: O, tl: Process1[I, O] = halt1[I, O]): Process1[I, O] = emit(h, tl)
+
+      def halt1[I, O]: Process1[I, O] = Halt[Is[I]#f, O](End)
+
+      def lift[I, O](f: I => O): Process1[I, O] = await1[I, O](i => emit(f(i))).repeat
+      def filter[I](f: I => Boolean): Process1[I, I] = await1[I, I](i => if (f(i)) emit(i) else halt1).repeat
+
+      case class T[I, I2]() {
+        sealed trait f[X] { def get: Either[I => X, I2 => X] }
+        val L = new f[I] { def get = Left(identity) }
+        val R = new f[I2] { def get = Right(identity) }
+      }
+
+      def L[I, I2] = T[I, I2]().L
+      def R[I, I2] = T[I, I2]().R
+
+      type Tee[I, I2, O] = Process[T[I, I2]#f, O]
+
+      def haltT[I, I2, O]: Tee[I, I2, O] = Halt[T[I, I2]#f, O](End)
+
+      def awaitL[I, I2, O](recv: I => Tee[I, I2, O], fallback: => Tee[I, I2, O] = haltT[I, I2, O]): Tee[I, I2, O] =
+        await[T[I, I2]#f, I, O](L) {
+          case Left(End) => fallback
+          case Left(err) => Halt(err)
+          case Right(a)  => Try(recv(a))
+        }
+
+      def awaitR[I, I2, O](recv: I2 => Tee[I, I2, O], fallback: => Tee[I, I2, O] = haltT[I, I2, O]): Tee[I, I2, O] =
+        await[T[I, I2]#f, I2, O](R) {
+          case Left(End) => fallback
+          case Left(err) => Halt(err)
+          case Right(a)  => Try(recv(a))
+        }
+
+      def emitT[I, I2, O](h: O, tl: Tee[I, I2, O] = haltT[I, I2, O]): Tee[I, I2, O] = emit(h, tl)
+
+      def zipWith[I, I2, O](f: (I, I2) => O): Tee[I, I2, O] =
+        awaitL[I, I2, O](i => awaitR(i2 => emitT(f(i, i2)))).repeat
+
+      def zip[I, I2]: Tee[I, I2, (I, I2)] = zipWith((_, _))
+
+      type Sink[F[_], O] = Process[F, O => Process[F, Unit]]
+
+      def fileW(file: String, append: Boolean = false): Sink[IO, String] = {
+        resource[FileWriter, String => Process[IO, Unit]](IO(new FileWriter(file, append)))(w =>
+          constant { (s: String) => eval[IO, Unit](IO(w.write(s))) }
+        ) { w => eval_(IO(w.close)) }
+      }
+
+      def constant[A](a: A): Process[IO, A] = eval[IO, A](IO(a)).repeat
+
+      def join[F[_], O](p: Process[F, Process[F, O]]): Process[F, O] = p.flatMap(identity)
     }
 
     trait MonadCatch[F[_]] extends Monad[F] {
@@ -312,7 +478,7 @@ object Chapter15 {
     object Task {
       implicit val monadCatch: MonadCatch[Task] = new MonadCatch[Task] {
         override def attempt[A](a: Task[A]): Task[Either[Throwable, A]] = Task(a.get.map(v => Right(v)))
-        override def fail[A](t: Throwable): Task[A] = ???
+        override def fail[A](t: Throwable): Task[A] = Task(IO(Left(t)))
         override def unit[A](a: => A): Task[A] = Task.unit(a)
         override def flatMap[A, B](fa: Task[A])(f: A => Task[B]): Task[B] = fa.flatMap(f)
       }
